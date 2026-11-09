@@ -60,10 +60,10 @@ export function ConfirmDialog(props: {
   );
 }
 
-export function Sheet(props: { title: string; side: 'left' | 'right'; onClose: () => void; children: ReactNode }) {
+export function Sheet(props: { title: string; side: 'left' | 'right'; wide?: boolean; onClose: () => void; children: ReactNode }) {
   const ref = useModal(props.onClose);
   return (
-    <dialog ref={ref} className="sheet" data-side={props.side} aria-label={props.title}>
+    <dialog ref={ref} className={`sheet ${props.wide ? 'sheet--wide' : ''}`} data-side={props.side} aria-label={props.title}>
       <div className="sheet__frame">
         <div className="sheet__head">
           <span>{props.title}</span>

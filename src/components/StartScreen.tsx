@@ -1,4 +1,4 @@
-import { CircleAlert, Upload } from 'lucide-react';
+import { CircleAlert, MessageSquareText, Upload } from 'lucide-react';
 import { useId, useRef, useState, type FormEvent } from 'react';
 import { hiddenRequirementCount } from '../engine/factTracker';
 import { newSeed } from '../state/attempt';
@@ -15,6 +15,9 @@ export function StartScreen(props: {
   onStart: (name: string, difficulty: Difficulty, seed: number) => void;
   onImport: (file: File) => void;
   importError: string | null;
+  /** Временная кнопка преподавателя; без неё не показывается. */
+  onOpenAnswers?: () => void;
+  answersTitle?: string | null;
 }) {
   const { scenario } = props;
   const [name, setName] = useState('');
@@ -124,6 +127,11 @@ export function StartScreen(props: {
           <button type="button" className="btn btn--ghost btn--small" onClick={() => fileRef.current?.click()}>
             <Upload size={15} />Загрузить файл прогресса
           </button>
+          {props.onOpenAnswers && (
+            <button type="button" className="btn btn--ghost btn--small" data-testid="open-answers" onClick={props.onOpenAnswers}>
+              <MessageSquareText size={15} />Ответы заказчика (тест)
+            </button>
+          )}
           <input
             ref={fileRef}
             type="file"
@@ -138,6 +146,7 @@ export function StartScreen(props: {
             }}
           />
         </div>
+        {props.answersTitle && <p className="hint" style={{ textAlign: 'center' }} data-testid="answers-active">Загружены тестовые ответы: {props.answersTitle}</p>}
         {props.importError && <div className="field-error" role="alert"><CircleAlert size={15} />{props.importError}</div>}
       </form>
     </main>

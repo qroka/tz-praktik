@@ -1,5 +1,9 @@
-import { Award, Check, CircleAlert, ClipboardList, CloudOff, Download, Ellipsis, FileText, LoaderCircle, MessagesSquare, RotateCcw, Upload, X } from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Award, Check, CircleAlert, ClipboardList, CloudOff, Download, Ellipsis, FileText, LoaderCircle, MessageSquareText, MessagesSquare, RotateCcw, Upload, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AnswerLab } from './components/AnswerLab';
+import { TEACHER_TOOLS } from './config';
+import { applyAnswerPack, parseAnswerPack } from './engine/answerPack';
+import { clearStoredPack, loadStoredPack, saveStoredPack, type StoredPack } from './state/answerPackStorage';
 import { CasePanel } from './components/CasePanel';
 import { ChatPanel } from './components/ChatPanel';
 import { RegistryPanel } from './components/RegistryPanel';
@@ -7,7 +11,7 @@ import { ResultScreen } from './components/ResultScreen';
 import { ConfirmDialog, formatTime, prefersReducedMotion, Sheet, useDismiss, useLayout } from './components/shared';
 import { StartScreen } from './components/StartScreen';
 import { TzEditor } from './components/TzEditor';
-import { scenario } from './data/scenario';
+import { scenario as baseScenario } from './data/scenario';
 import { minSectionWords } from './data/evaluation';
 import { createAttempt, finishAttempt, sendQuestion, setScreen } from './state/attempt';
 import { downloadFile, parseProgress, progressFileName, toProgressJson } from './state/exporters';
@@ -33,7 +37,16 @@ function SaveIndicator({ status }: { status: SaveStatus }) {
 const typingDelay = (text: string) => (prefersReducedMotion() ? 200 : Math.max(650, Math.min(1800, 400 + text.length * 14)));
 
 export function App() {
-  const [attempt, setAttempt] = useState<Attempt | null>(() => loadAttempt(scenario));
+  // Тестовые ответы преподавателя накладываются поверх исходного сценария.
+  const [storedPack, setStoredPack] = useState<StoredPack | null>(() => (TEACHER_TOOLS ? loadStoredPack() : null));
+  const packInfo = useMemo(() => {
+    if (!storedPack) return null;
+    const parsed = parseAnswerPack(storedPack.text, baseScenario);
+    return parsed.ok ? { scenario: applyAnswerPack(baseScenario, parsed.pack), title: parsed.pack.title || storedPack.fileName } : null;
+  }, [storedPack]);
+  const scenario = packInfo?.scenario ?? baseScenario;
+  const [labOpen, setLabOpen] = useState(false);
+  const [attempt, setAttempt] = useState<Attempt | null>(() => loadAttempt(baseScenario));
   const [save, setSave] = useState<SaveStatus>({ state: 'idle' });
   const [hiddenId, setHiddenId] = useState<string | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
@@ -106,9 +119,30 @@ export function App() {
     reader.readAsText(file);
   }
 
+  const lab = labOpen && (
+    <AnswerLab
+      base={baseScenario}
+      scenario={scenario}
+      stored={storedPack}
+      onClose={() => setLabOpen(false)}
+      onLoad={(pack) => {
+        saveStoredPack(pack);
+        setStoredPack(pack);
+      }}
+      onReset={() => {
+        clearStoredPack();
+        setStoredPack(null);
+      }}
+    />
+  );
+
   if (!attempt) {
     return (
+      <>
+      {lab}
       <StartScreen
+        onOpenAnswers={TEACHER_TOOLS ? () => setLabOpen(true) : undefined}
+        answersTitle={packInfo?.title ?? null}
         scenario={scenario}
         importError={startError}
         onImport={(file) => importFile(file, setStartError)}
@@ -117,6 +151,7 @@ export function App() {
           setAttempt(createAttempt(scenario, name, difficulty, seed));
         }}
       />
+      </>
     );
   }
 
@@ -168,6 +203,11 @@ export function App() {
               <button type="button" role="menuitem" className="menu__item" onClick={() => { fileRef.current?.click(); setMenuOpen(false); }}>
                 <Upload size={17} />Загрузить файл прогресса
               </button>
+              {TEACHER_TOOLS && (
+                <button type="button" role="menuitem" className="menu__item" data-testid="menu-answers" onClick={() => { setLabOpen(true); setMenuOpen(false); }}>
+                  <MessageSquareText size={17} />Ответы заказчика (тест)
+                </button>
+              )}
               <div className="menu__sep" />
               <button type="button" role="menuitem" className="menu__item" data-testid="menu-reset" onClick={() => { setConfirm('reset'); setMenuOpen(false); }}>
                 <RotateCcw size={17} />Начать заново
@@ -190,6 +230,14 @@ export function App() {
         </div>
       </header>
 
+      {packInfo && (
+        <div className="banner banner--ok" data-testid="answers-banner">
+          <MessageSquareText size={17} />
+          <span>Тестовые ответы: {packInfo.title}</span>
+          <button type="button" className="btn btn--small btn--ghost" onClick={() => setLabOpen(true)}>Настроить</button>
+        </div>
+      )}
+      {lab}
       {notice && (
         <div className={`banner ${notice.ok ? 'banner--ok' : ''}`} role="status">
           {notice.ok ? <Check size={17} /> : <CircleAlert size={17} />}

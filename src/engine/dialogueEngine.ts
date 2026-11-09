@@ -12,7 +12,7 @@ import type {
   Unit,
 } from '../types';
 import { discloseFacts, factById, isDisclosed, missingPrerequisites } from './factTracker';
-import { analyze, findAmbiguity, MIN_INTENT_SCORE, rankIntents, type Analysis, type MatchContext } from './intentMatcher';
+import { analyze, findAmbiguity, matchByExample, MIN_INTENT_SCORE, rankIntents, type Analysis, type MatchContext } from './intentMatcher';
 import type { ParsedNumber } from './normalizeText';
 import { fillTemplate, pickVariant, randomFor } from './responseSelector';
 
@@ -469,6 +469,14 @@ export function respond(previous: EngineState, input: DialogueInput, scenario: S
     if (claimResult) return update(claimResult);
   }
 
+  // Вопрос почти дословно совпадает с вопросом из файла преподавателя — отвечаем этой темой.
+  const priority = matchByExample(analysis, scenario, { priority: true, min: 0.6 });
+  if (priority) {
+    const chosen = priority.intent;
+    if (chosen.kind === 'meta') return update(answerMeta(state, chosen, input, scenario, ctxFacts, ctxIntent));
+    return update(answerIntent({ ...state, pending: null }, chosen, input, scenario, REMINDER_CUE.test(analysis.normalized)));
+  }
+
   const ranked = rankIntents(analysis, ctx, scenario);
   const top = ranked[0];
   const topIsStrong = top && top.score >= MIN_INTENT_SCORE;
@@ -483,8 +491,12 @@ export function respond(previous: EngineState, input: DialogueInput, scenario: S
   const ambiguity = findAmbiguity(fullAnalysis, ctx, scenario);
   if (ambiguity) return update(answerAmbiguity(state, ambiguity, analysis, input));
 
-  // 4. Нет подходящего намерения.
-  if (!topIsStrong) return update(answerFallback(state, input, scenario));
+  // 4. Правила ничего не нашли: пробуем самый похожий пример формулировки.
+  if (!topIsStrong) {
+    const similar = matchByExample(analysis, scenario, { priority: false, min: 0.5 });
+    if (similar && similar.intent.kind !== 'meta') return update(answerIntent({ ...state, pending: null }, similar.intent, input, scenario, false));
+    return update(answerFallback(state, input, scenario));
+  }
 
   // 5. В одном сообщении несколько предметов: отвечаем только на первый.
   const reminder = REMINDER_CUE.test(analysis.normalized);

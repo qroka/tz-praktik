@@ -366,3 +366,51 @@ test.describe('10. Мобильная компоновка', () => {
     expect(await noOverflow()).toBe(true);
   });
 });
+
+test('Ответы заказчика (тест): шаблон, загрузка, проверка вопросов, диалог, возврат', async ({ page }) => {
+  await page.goto('/');
+  await page.getByTestId('open-answers').click();
+  const lab = page.getByTestId('answer-lab');
+  await expect(lab).toContainText('Сейчас работают исходные ответы');
+
+  const [template] = await Promise.all([page.waitForEvent('download'), page.getByTestId('lab-template').click()]);
+  expect(template.suggestedFilename()).toBe('otvety-zakazchika.json');
+  const pack = JSON.parse(readFileSync((await template.path())!, 'utf8'));
+  expect(pack.answers.length).toBeGreaterThan(50);
+
+  await page.getByTestId('lab-file').setInputFiles({ name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{ "format": ') });
+  await expect(page.getByTestId('lab-errors')).toContainText('JSON');
+
+  const temp = pack.answers.find((entry: { id: string }) => entry.id === 'temp_setpoint');
+  temp.replies = ['На мойку нужно 60 градусов, не меньше.'];
+  pack.title = 'Черновик Иры';
+  pack.answers.push({ title: 'Персонал', questions: ['Кто будет обслуживать систему?'], replies: ['Наши наладчики, по двое на смену.'] });
+  await page.getByTestId('lab-file').setInputFiles({ name: 'my.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(pack)) });
+  await expect(page.getByTestId('lab-errors')).toHaveCount(0);
+  await expect(page.getByTestId('lab-summary')).toContainText('новых: 1');
+  await expect(lab).toContainText('Черновик Иры');
+
+  await page.getByLabel('Вопросы студента, по одному на строку').fill('Какая температура воды нужна после теплообменника?\nКто будет обслуживать систему?\nабракадабра');
+  await page.getByTestId('lab-run').click();
+  const rows = page.getByTestId('lab-rows').locator('li');
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(0)).toContainText('не меньше');
+  await expect(rows.nth(1)).toContainText('наладчики');
+  await expect(rows.nth(2)).toContainText('Не понял');
+
+  await page.getByRole('button', { name: 'Закрыть панель' }).click();
+  await expect(page.getByTestId('answers-active')).toContainText('Черновик Иры');
+  await page.getByLabel('Имя студента').fill('Ира');
+  await page.getByRole('button', { name: 'Начать диалог' }).click();
+  await expect(page.getByTestId('answers-banner')).toContainText('Черновик Иры');
+  expect(await ask(page, 'Какая температура воды нужна после теплообменника?')).toBe('На мойку нужно 60 градусов, не меньше.');
+
+  await page.reload();
+  await expect(page.getByTestId('answers-banner')).toBeVisible();
+  await page.getByRole('button', { name: 'Меню попытки' }).click();
+  await page.getByTestId('menu-answers').click();
+  await page.getByTestId('lab-reset').click();
+  await expect(page.getByTestId('answer-lab')).toContainText('Сейчас работают исходные ответы');
+  await page.getByRole('button', { name: 'Закрыть панель' }).click();
+  await expect(page.getByTestId('answers-banner')).toHaveCount(0);
+});

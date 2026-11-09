@@ -396,6 +396,7 @@ dialog::backdrop { background: rgb(35 30 20 / 0.42); }
 .modal__foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 .modal__list { margin: 8px 0 0; padding-left: 18px; font-size: 14px; }
 .sheet { position: fixed; top: 0; bottom: 0; width: min(420px, 100vw); max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; padding: 0; border: 0; background: var(--ground); box-shadow: var(--shadow-float); animation: sheet-in 0.26s var(--ease-out) both; }
+.sheet--wide { width: min(720px, 100vw); }
 .sheet[data-side='left'] { left: 0; right: auto; --from: -24px; }
 .sheet[data-side='right'] { left: auto; right: 0; --from: 24px; }
 .sheet__frame { display: flex; flex-direction: column; height: 100%; min-height: 0; }
@@ -411,6 +412,27 @@ dialog::backdrop { background: rgb(35 30 20 / 0.42); }
   .req:hover .req__actions, .req:focus-within .req__actions,
   .msg:hover .msg__action, .msg:focus-within .msg__action { opacity: 1; }
 }
+
+/* --- Панель ответов заказчика --- */
+.lab { display: flex; flex-direction: column; gap: 16px; min-height: 0; overflow-y: auto; padding: 4px 20px 24px; }
+.lab__status { padding: 12px 14px; border-radius: var(--radius); background: var(--surface); }
+.lab__state { color: var(--ink-strong); font-weight: 600; }
+.lab__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.lab__messages { font-size: 13px; }
+.lab__messages ul { display: grid; gap: 4px; margin: 6px 0 0; padding-left: 20px; color: var(--ink); }
+.lab__messages summary { cursor: pointer; }
+.lab__check { display: grid; gap: 8px; padding-top: 16px; border-top: 1px solid var(--line); }
+.lab__title { color: var(--ink-strong); font-size: 16px; font-weight: 650; }
+.lab__options { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.lab__options .check { margin-right: auto; }
+.lab__select { width: auto; }
+.lab__rows { display: grid; gap: 1px; margin: 4px 0 0; padding: 0; overflow: hidden; border-radius: var(--radius); background: var(--line); list-style: none; counter-reset: row; }
+.lab__row { display: grid; gap: 4px; padding: 10px 14px 10px 40px; background: var(--surface); counter-increment: row; position: relative; }
+.lab__row::before { content: counter(row); position: absolute; left: 14px; top: 10px; color: var(--ink-soft); font-size: 13px; font-variant-numeric: tabular-nums; }
+.lab__q { color: var(--accent-ink); font-weight: 600; overflow-wrap: anywhere; }
+.lab__a { color: var(--ink-strong); overflow-wrap: anywhere; }
+.lab__meta { color: var(--ink-soft); font-size: 12px; }
+.lab__row[data-quality='unrecognized'] .lab__meta { color: var(--warn); font-weight: 600; }
 
 /* --- Анимация: объясняет действие --- */
 @keyframes spin { to { transform: rotate(360deg); } }

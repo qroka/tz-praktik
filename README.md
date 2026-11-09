@@ -127,6 +127,10 @@ type ReplyStep = {                  // replies[intent.id] — массив ша�
 
 ## Инструкция преподавателя
 
+### Настроить ответы заказчика без кода
+
+На сайте есть временная кнопка **«Ответы заказчика (тест)»** (стартовый экран и меню «⋯»): скачать все ответы файлом JSON, поправить их вручную или через ChatGPT, загрузить обратно и прогнать список вопросов. Подробно, с готовым промптом: [docs/instrukciya-otvety-zakazchika.md](docs/instrukciya-otvety-zakazchika.md). Шаблон: [docs/otvety-zakazchika.json](docs/otvety-zakazchika.json). Чтобы скрыть кнопку от студентов, поставьте `TEACHER_TOOLS = false` в `src/config.ts`.
+
 ### Изменить ответы заказчика
 
 Откройте `src/data/responses.ts`, найдите намерение по его `id` и поправьте `variants` (полный ответ) и `short` (ответ на повтор). Служебные реплики собраны в объекте `meta`. В шаблонах сохраняйте подстановки `{short}`, `{given}`, `{correct}`, `{label}`, `{other}`, `{need}`, `{value}`, `{area}`.

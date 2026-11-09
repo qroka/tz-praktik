@@ -4,10 +4,11 @@ import { it } from 'vitest';
 import { scenario } from './data/scenario';
 import { addRequirement, createAttempt, finishAttempt, sendQuestion, setTzText } from './state/attempt';
 import { toMarkdown } from './state/exporters';
+import { buildAnswerTemplate } from './engine/answerPack';
 
 const KIND = { fact: 'Факт', unknown: 'Заказчик не знает', general: 'Общий вопрос', meta: 'Уточнение', social: 'Служебное' } as const;
 
-it.runIf(import.meta.env.MODE === 'docs')('создаёт docs/intents.md и docs/example-result.md', () => {
+it.runIf(import.meta.env.MODE === 'docs')('создаёт docs/intents.md, docs/otvety-zakazchika.json и docs/example-result.md', () => {
   const { intents, replies, facts, meta, ambiguities } = scenario;
   const answers = Object.values(replies).flat().flatMap((step) => step.variants).length;
   const lines = [
@@ -27,6 +28,7 @@ it.runIf(import.meta.env.MODE === 'docs')('создаёт docs/intents.md и doc
     '',
   ];
   writeFileSync('docs/intents.md', lines.join('\n'));
+  writeFileSync('docs/otvety-zakazchika.json', JSON.stringify(buildAnswerTemplate(scenario), null, 2));
 
   let attempt = createAttempt(scenario, 'Пример Студент', 'standard', 2024);
   for (const text of [

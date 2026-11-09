@@ -95,6 +95,39 @@ function exampleStems(intent: Intent, scenario: Scenario): Set<string>[] {
   return stems;
 }
 
+const textStemCache = new Map<string, Set<string>>();
+
+function textStems(text: string): Set<string> {
+  let stems = textStemCache.get(text);
+  if (!stems) {
+    stems = new Set(tokenize(normalizeText(text)).map(stem).filter((s) => !STOP_STEMS.has(s)));
+    textStemCache.set(text, stems);
+  }
+  return stems;
+}
+
+/**
+ * Ищет намерение по сходству вопроса с примерами формулировок.
+ * priority — только вопросы, добавленные преподавателем в файле ответов.
+ */
+export function matchByExample(
+  analysis: Analysis,
+  scenario: Scenario,
+  options: { priority: boolean; min: number },
+): { intent: Intent; similarity: number } | null {
+  const query = new Set(analysis.stems.filter((s) => !STOP_STEMS.has(s)));
+  if (!query.size) return null;
+  let best: { intent: Intent; similarity: number } | null = null;
+  for (const intent of scenario.intents) {
+    const examples = options.priority ? intent.priorityExamples ?? [] : intent.examples;
+    for (const example of examples) {
+      const value = similarity(query, textStems(example));
+      if (value >= options.min && (!best || value > best.similarity)) best = { intent, similarity: value };
+    }
+  }
+  return best;
+}
+
 function similarity(query: Set<string>, example: Set<string>): number {
   if (!query.size || !example.size) return 0;
   let common = 0;
