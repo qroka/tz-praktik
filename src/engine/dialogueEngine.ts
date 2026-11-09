@@ -14,7 +14,7 @@ import type {
 import { discloseFacts, factById, isDisclosed, missingPrerequisites } from './factTracker';
 import { analyze, findAmbiguity, matchByExample, MIN_INTENT_SCORE, rankIntents, type Analysis, type MatchContext } from './intentMatcher';
 import type { ParsedNumber } from './normalizeText';
-import { fillTemplate, pickVariant, randomFor } from './responseSelector';
+import { fillTemplate, pickVariant } from './responseSelector';
 
 export type DialogueInput = {
   text: string;
@@ -285,9 +285,9 @@ function answerIntent(state: EngineState, intent: Intent, input: DialogueInput, 
   current = templatePicked.state;
   const facts = steps.flatMap((item) => item.facts);
   current = { ...current, lastFactIds: facts };
-  if (!reminder) current = setPatience(bump(current, 'repeats'), -1);
+  if (!reminder) current = bump(current, 'repeats');
   const text = fillTemplate(templatePicked.text, { short: shortPicked.text });
-  const decorated = reminder ? { text, state: current } : withImpatience(current, input, scenario, text);
+  const decorated = { text, state: current };
   return finish(decorated.state, decorated.text, reminder ? 'social' : 'repeat', intent, facts, intent.topic);
 }
 
@@ -317,24 +317,6 @@ function answerFallback(state: EngineState, input: DialogueInput, scenario: Scen
   }
   const picked = pickVariant(current, input.seed, 'meta:fallback', scenario.meta.fallback);
   current = picked.state;
-  if (input.difficulty === 'learning') {
-    // В учебном режиме заказчик подталкивает к неисследованному направлению, не формулируя вопрос.
-    const open = scenario.categories.filter((category) =>
-      scenario.facts.some((fact) => fact.category === category.id && !current.disclosed.includes(fact.id)),
-    );
-    if (open.length) {
-      const category = open[Math.floor(randomFor(input.seed, current.turn, 'hint') * open.length)];
-      const hint = pickVariant(current, input.seed, 'meta:fallbackHint', scenario.meta.fallbackHint);
-      return finish(
-        hint.state,
-        `${picked.text} ${fillTemplate(hint.text, { area: category.title.toLowerCase() })}`,
-        'unrecognized',
-        null,
-        [],
-        current.topic,
-      );
-    }
-  }
   const decorated = withImpatience(current, input, scenario, picked.text);
   return finish(decorated.state, decorated.text, 'unrecognized', null, [], current.topic);
 }
@@ -436,11 +418,13 @@ export function respond(previous: EngineState, input: DialogueInput, scenario: S
   const questionText = severalQuestions ? questionParts[0] : input.text;
   const analysis = analyze(questionText, scenario);
 
-  const baseCtx: MatchContext = { topic: input.replyTo?.topic ?? state.topic, lastAttributes: state.lastAttributes };
+  const baseCtx: MatchContext = { topic: input.replyTo?.topic ?? state.topic, lastAttributes: input.replyTo ? [] : state.lastAttributes };
   const rawTop = rankIntents(analysis, baseCtx, scenario)[0];
   const rawIsService = rawTop && rawTop.score >= 3 && (rawTop.intent.kind === 'social' || rawTop.intent.kind === 'meta');
   // Ответ на встречный вопрос дополняет прошлый вопрос, только если в нём есть что-то по делу.
-  const usePending = state.pending && analysis.concepts.size > 0 && !rawIsService;
+  const pendingSubjects = scenario.subjectConcepts.filter((c) => state.pending?.concepts.includes(c));
+  const changesSubject = scenario.subjectConcepts.some((c) => analysis.concepts.has(c) && !pendingSubjects.includes(c) && !['hc', 'air'].includes(c));
+  const usePending = state.pending && analysis.concepts.size > 0 && !rawIsService && !changesSubject;
   if (state.pending && !usePending) state = { ...state, pending: null };
   const ctx: MatchContext = { ...baseCtx, extraConcepts: usePending ? state.pending!.concepts : undefined };
   const ctxFacts = input.replyTo?.factIds?.length ? input.replyTo.factIds : state.lastFactIds;
@@ -456,7 +440,31 @@ export function respond(previous: EngineState, input: DialogueInput, scenario: S
     state: { ...result.state, lastAttributes: attributes },
   });
 
-  const update = (result: Built): { state: EngineState; reply: EngineReply } => rememberAttributes(result);
+  let reason = 'Правила и контекст';
+  let score: number | null = null;
+  const update = (result: Built): Built => rememberAttributes({ ...result, reply: { ...result.reply, diagnostic: { reason, score } } });
+
+  // Смысловые ограничения действуют до приоритетных примеров пакета.
+  const frame = analysis.frame;
+  const framedAnswer = (id: string) => {
+    reason = 'Смысл вопроса: время и предмет';
+    return update(answerIntent({ ...state, pending: null }, scenario.intents.find((item) => item.id === id)!, input, scenario, false));
+  };
+  if (frame.currentPump || frame.responsibility || frame.mixedModes) {
+    reason = 'Недостаточно исходных данных / уточнение времени';
+    const text = frame.currentPump
+      ? 'Способ управления существующим насосом у меня не уточнён. Это нужно проверить на объекте; требование к будущему управлению обсудим отдельно.'
+      : frame.responsibility
+        ? 'Предложите подходящее оборудование по требованиям и согласуйте с нами. Точное распределение ответственности у меня не определено.'
+        : 'Вы спрашиваете, как узел работает сейчас, или какие режимы предусмотреть после автоматизации?';
+    return update(finish({ ...state, pending: null, topic: null, lastFactIds: [], lastIntentId: null }, text, frame.mixedModes ? 'clarify' : 'unknown_found', null, [], null));
+  }
+  if (frame.currentOperation && !analysis.numbers.length) return framedAnswer('purpose_current');
+  if (frame.inventory) {
+    const result = framedAnswer('object_desc');
+    return { ...result, reply: { ...result.reply, text: `${result.reply.text} Полный перечень установленных приборов и исполнительных устройств нужно уточнить на объекте.` } };
+  }
+  if (frame.goal) return framedAnswer('purpose_goal');
 
   // 1. Утверждение с числом: сверяем и при необходимости поправляем студента.
   const isClaim =
@@ -466,12 +474,19 @@ export function respond(previous: EngineState, input: DialogueInput, scenario: S
     (CLAIM_CUE.test(` ${analysis.normalized} `) || /\?\s*$/.test(questionText));
   if (isClaim) {
     const claimResult = answerClaim(state, checkClaim(concepts, analysis.numbers, scenario, ctxFacts, state.disclosed, true), input, scenario);
-    if (claimResult) return update(claimResult);
+    if (claimResult) { reason = 'Проверка числового утверждения'; return update(claimResult); }
+  }
+
+  if (rawIsService && rawTop.intent.kind === 'social') {
+    reason = 'Социальная реплика'; score = rawTop.score;
+    return update(answerIntent({ ...state, pending: null }, rawTop.intent, input, scenario, false));
   }
 
   // Вопрос почти дословно совпадает с вопросом из файла преподавателя — отвечаем этой темой.
   const priority = matchByExample(analysis, scenario, { priority: true, min: 0.6 });
   if (priority) {
+    reason = 'Вопрос из пакета ответов (сходство)';
+    score = priority.similarity;
     const chosen = priority.intent;
     if (chosen.kind === 'meta') return update(answerMeta(state, chosen, input, scenario, ctxFacts, ctxIntent));
     return update(answerIntent({ ...state, pending: null }, chosen, input, scenario, REMINDER_CUE.test(analysis.normalized)));
@@ -479,6 +494,7 @@ export function respond(previous: EngineState, input: DialogueInput, scenario: S
 
   const ranked = rankIntents(analysis, ctx, scenario);
   const top = ranked[0];
+  score = top?.score ?? null;
   const topIsStrong = top && top.score >= MIN_INTENT_SCORE;
 
   // 2. Служебные реплики и уточнения не требуют разбора неоднозначности.
@@ -489,12 +505,16 @@ export function respond(previous: EngineState, input: DialogueInput, scenario: S
 
   // 3. Неоднозначный предмет — встречный вопрос вместо угадывания.
   const ambiguity = findAmbiguity(fullAnalysis, ctx, scenario);
-  if (ambiguity) return update(answerAmbiguity(state, ambiguity, analysis, input));
+  if (ambiguity) { reason = `Неоднозначность: ${ambiguity.id}`; return update(answerAmbiguity(state, ambiguity, analysis, input)); }
 
   // 4. Правила ничего не нашли: пробуем самый похожий пример формулировки.
   if (!topIsStrong) {
     const similar = matchByExample(analysis, scenario, { priority: false, min: 0.5 });
-    if (similar && similar.intent.kind !== 'meta') return update(answerIntent({ ...state, pending: null }, similar.intent, input, scenario, false));
+    if (similar && similar.intent.kind !== 'meta') {
+      reason = 'Пример сценария (сходство)'; score = similar.similarity;
+      return update(answerIntent({ ...state, pending: null }, similar.intent, input, scenario, false));
+    }
+    reason = 'Нет подходящего правила или примера';
     return update(answerFallback(state, input, scenario));
   }
 

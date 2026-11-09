@@ -20,7 +20,7 @@ const QUALITY: Record<EngineReply['quality'], string> = {
   social: 'Реплика',
 };
 
-type Row = { question: string; answer: string; topic: string; quality: EngineReply['quality'] };
+type Row = { intentId: string; score: string; reason: string; question: string; answer: string; topic: string; quality: EngineReply['quality'] };
 
 const csvCell = (value: string) => `"${value.replace(/"/g, '""')}"`;
 
@@ -42,7 +42,7 @@ export function AnswerLab(props: {
     return parsed.ok ? parsed.warnings : [];
   });
   const [questions, setQuestions] = useState('');
-  const [separate, setSeparate] = useState(false);
+  const [separate, setSeparate] = useState(true);
   const [difficulty, setDifficulty] = useState<Difficulty>('standard');
   const [rows, setRows] = useState<Row[]>([]);
 
@@ -78,14 +78,14 @@ export function AnswerLab(props: {
       const out = respond(state, { text: question, seed: 1, difficulty }, scenario);
       state = out.state;
       const intent = scenario.intents.find((item) => item.id === out.reply.intentId);
-      result.push({ question, answer: out.reply.text, topic: intent?.title ?? '', quality: out.reply.quality });
+      result.push({ intentId: out.reply.intentId ?? '—', score: out.reply.diagnostic?.score?.toFixed(2) ?? '—', reason: out.reply.diagnostic?.reason ?? '', question, answer: out.reply.text, topic: intent?.title ?? '', quality: out.reply.quality });
     }
     setRows(result);
   }
 
   function exportRows() {
-    const lines = [['Вопрос', 'Ответ заказчика', 'Тема', 'Тип'].map(csvCell).join(';')];
-    for (const row of rows) lines.push([row.question, row.answer, row.topic, QUALITY[row.quality]].map(csvCell).join(';'));
+    const lines = [['Вопрос', 'Ответ заказчика', 'Тема', 'Тип', 'intentId', 'Оценка', 'Причина'].map(csvCell).join(';')];
+    for (const row of rows) lines.push([row.question, row.answer, row.topic, QUALITY[row.quality], row.intentId, row.score, row.reason].map(csvCell).join(';'));
     // BOM нужен, чтобы Excel открыл кириллицу без «кракозябр».
     downloadFile('proverka-voprosov.csv', `﻿${lines.join('\r\n')}`, 'text/csv');
   }
@@ -186,6 +186,7 @@ export function AnswerLab(props: {
                     <div className="lab__q">{row.question}</div>
                     <div className="lab__a">{row.answer}</div>
                     <div className="lab__meta">{QUALITY[row.quality]}{row.topic ? ` · ${row.topic}` : ''}</div>
+                    <div className="lab__meta">{row.intentId} · оценка: {row.score} · {row.reason}</div>
                   </li>
                 ))}
               </ol>

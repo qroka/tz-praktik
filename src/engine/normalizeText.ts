@@ -38,7 +38,7 @@ export function normalizeText(input: string): string {
   text = text.replace(/[^\p{L}\d.\s]/gu, ' ');
   // Точка остаётся только внутри числа.
   text = text.replace(/\.(?!\d)|(?<!\d)\./g, ' ');
-  return text.replace(/\s+/g, ' ').trim();
+  return text.replace(/(?:^|\s)(щас|режими|чо)(?=\s|$)/g, (_, word: string) => ` ${{ щас: 'сейчас', режими: 'режимы', чо: 'что' }[word]}`).replace(/\s+/g, ' ').trim();
 }
 
 export function tokenize(normalized: string): string[] {

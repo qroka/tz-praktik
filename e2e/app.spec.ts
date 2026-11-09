@@ -397,6 +397,14 @@ test('Ответы заказчика (тест): шаблон, загрузка
   await expect(rows.nth(0)).toContainText('не меньше');
   await expect(rows.nth(1)).toContainText('наладчики');
   await expect(rows.nth(2)).toContainText('Не понял');
+  await expect(rows.nth(0)).toContainText('temp_setpoint');
+  await expect(rows.nth(0)).toContainText('оценка:');
+  await expect(rows.nth(2)).toContainText('Нет подходящего правила');
+  const [csv] = await Promise.all([page.waitForEvent('download'), lab.getByRole('button', {name: 'Скачать таблицу (Excel)'}).click()]);
+  const exported = readFileSync((await csv.path())!, 'utf8');
+  expect(exported).toContain('intentId');
+  expect(exported).toContain('Причина');
+  expect(exported).toContain('temp_setpoint');
 
   await page.getByRole('button', { name: 'Закрыть панель' }).click();
   await expect(page.getByTestId('answers-active')).toContainText('Черновик Иры');

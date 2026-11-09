@@ -2,7 +2,10 @@
 import type { Ambiguity, Intent, Scenario } from '../types';
 import { extractNumbers, fuzzyStartsWith, normalizeText, stem, tokenize, type ParsedNumber } from './normalizeText';
 
+import { detectQuestionFrame, frameAllows, type QuestionFrame } from './questionFrame';
+
 export type Analysis = {
+  frame: QuestionFrame;
   normalized: string;
   tokens: string[];
   stems: string[];
@@ -20,6 +23,7 @@ export type RankedIntent = { intent: Intent; score: number; viaContext: boolean 
 
 type CompiledLexeme = { concept: string; parts: { text: string; exact: boolean }[] };
 
+const FUNCTION_WORDS = new Set(['до', 'за', 'на', 'из', 'в', 'с', 'по', 'при', 'и', 'а', 'к', 'от', 'у', 'о', 'как', 'что']);
 const lexiconCache = new WeakMap<object, CompiledLexeme[]>();
 
 function compileLexicon(lexicon: Record<string, string[]>): CompiledLexeme[] {
@@ -32,7 +36,7 @@ function compileLexicon(lexicon: Record<string, string[]>): CompiledLexeme[] {
         concept,
         parts: entry.split(' ').map((part) => ({
           text: part.startsWith('=') ? part.slice(1) : part,
-          exact: part.startsWith('='),
+          exact: part.startsWith('=') || (entry.includes(' ') && FUNCTION_WORDS.has(part)),
         })),
       });
     }
@@ -42,7 +46,10 @@ function compileLexicon(lexicon: Record<string, string[]>): CompiledLexeme[] {
 }
 
 function tokenMatches(token: string, part: { text: string; exact: boolean }): boolean {
-  return part.exact ? token === part.text : fuzzyStartsWith(token, part.text);
+  // «теперь» отличается от начала «температура» одной буквой, но не является опечаткой.
+  if (part.exact) return token === part.text;
+  if (token === 'теперь' || part.text.startsWith('автоматич')) return token.startsWith(part.text);
+  return fuzzyStartsWith(token, part.text);
 }
 
 /** Выделяет понятия. Лексема из нескольких слов ищется как последовательность. */
@@ -69,6 +76,7 @@ export function analyze(text: string, scenario: Scenario): Analysis {
     if (concepts.has(phrase)) dropped.forEach((concept) => concepts.delete(concept));
   }
   return {
+    frame: detectQuestionFrame(normalized, concepts),
     normalized,
     tokens,
     stems: tokens.map(stem),
@@ -95,6 +103,9 @@ function exampleStems(intent: Intent, scenario: Scenario): Set<string>[] {
   return stems;
 }
 
+const EXAMPLE_QUALIFIERS = new Set(['warning', 'alarm', 'low', 'tolerance', 'reaction', 'limit', 'start', 'loss', 'winter', 'summer', 'powerkw']);
+const OPPOSITES = [['beforePump', 'afterPump'], ['winter', 'summer'], ['warning', 'alarm']];
+
 const textStemCache = new Map<string, Set<string>>();
 
 function textStems(text: string): Set<string> {
@@ -119,10 +130,20 @@ export function matchByExample(
   if (!query.size) return null;
   let best: { intent: Intent; similarity: number } | null = null;
   for (const intent of scenario.intents) {
+    if (!frameAllows(intent, analysis.frame, analysis.concepts)) continue;
+    if (intent.exclude?.some((concept) => analysis.concepts.has(concept))) continue;
+    if (intent.required.some(group => group.every(c => EXAMPLE_QUALIFIERS.has(c)) && !group.some(c => analysis.concepts.has(c)))) continue;
     const examples = options.priority ? intent.priorityExamples ?? [] : intent.examples;
     for (const example of examples) {
       const value = similarity(query, textStems(example));
-      if (value >= options.min && (!best || value > best.similarity)) best = { intent, similarity: value };
+      if (value < options.min || (best && value <= best.similarity)) continue;
+      const other = analyze(example, scenario);
+      if (intent.id === 'flow_display' && !analysis.concepts.has('flow')) continue;
+      if (analysis.frame.current && other.frame.future || analysis.frame.future && other.frame.current) continue;
+      if (OPPOSITES.some(([a, b]) => analysis.concepts.has(a) && other.concepts.has(b) || analysis.concepts.has(b) && other.concepts.has(a))) continue;
+      // A short fragment needs a real subject from context, not a matching example.
+      if (!scenario.subjectConcepts.some((c) => analysis.concepts.has(c)) && /^(а )?(летом|зимой|после насоса|до насоса)$/.test(analysis.normalized)) continue;
+      best = { intent, similarity: value };
     }
   }
   return best;
@@ -150,8 +171,12 @@ export function contextConcepts(analysis: Analysis, ctx: MatchContext, scenario:
   }
   // Короткий вопрос без признака («а по давлению после насоса?») наследует признак предыдущего.
   const hasAttribute = scenario.attributeConcepts.some((concept) => analysis.concepts.has(concept));
-  if (!hasAttribute && analysis.tokens.length <= 6) {
+  if (!hasSubject && !hasAttribute && analysis.tokens.length <= 6) {
     for (const concept of ctx.lastAttributes) carried.add(concept);
+  }
+  for (const [a, b] of [['beforePump', 'afterPump'], ['beforeAny', 'afterAny'], ['winter', 'summer']]) {
+    if (analysis.concepts.has(a)) carried.delete(b);
+    if (analysis.concepts.has(b)) carried.delete(a);
   }
   return carried;
 }
@@ -165,6 +190,8 @@ export function rankIntents(analysis: Analysis, ctx: MatchContext, scenario: Sce
   const ranked: RankedIntent[] = [];
 
   for (const intent of scenario.intents) {
+    if (!frameAllows(intent, analysis.frame, concepts)) continue;
+    if (['temp_inlet_winter', 'temp_inlet_summer'].includes(intent.id) && !concepts.has('temp') && !concepts.has('inlet') && ctx.topic !== 'inlet') continue;
     if (intent.exclude?.some((concept) => concepts.has(concept))) continue;
     if (intent.onlyInTopics && !(ctx.topic && intent.onlyInTopics.includes(ctx.topic))) continue;
 
@@ -215,7 +242,7 @@ export function findAmbiguity(analysis: Analysis, ctx: MatchContext, scenario: S
   const concepts = new Set([...analysis.concepts, ...(ctx.extraConcepts ?? [])]);
   for (const ambiguity of scenario.ambiguities) {
     if (!ambiguity.trigger.some((concept) => concepts.has(concept))) continue;
-    if (ctx.topic && ambiguity.contextTopics.includes(ctx.topic)) continue;
+    if (ctx.topic && ambiguity.contextTopics.includes(ctx.topic) && !(ambiguity.id === 'pressure' && concepts.has('low') && ['hc', 'hc_press'].includes(ctx.topic))) continue;
     const allowed = new Set([...ambiguity.trigger, ...ambiguity.neutral]);
     const hasResolver = [...concepts].some((concept) => !allowed.has(concept));
     if (!hasResolver) return ambiguity;

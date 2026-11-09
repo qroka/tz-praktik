@@ -204,6 +204,7 @@ export type EngineState = {
 };
 
 export type EngineReply = {
+  diagnostic?: { reason: string; score: number | null };
   text: string;
   intentId: string | null;
   topic: string | null;

@@ -193,10 +193,11 @@ describe('Повторные вопросы', () => {
     expect(second.state.counters.repeats).toBe(0);
     expect(second.reply.text).toContain('60');
   });
-  it('терпение заказчика падает от постоянных повторов', () => {
+  it('повторы не вызывают искусственных упрёков', () => {
     const turns = talk([question, question, question, question, question, question, question, question]);
     const texts = turns.map((t) => t.reply.text).join(' ');
-    expect(texts).toMatch(/конкретнее|по существу|быстрее|к делу/);
+    expect(texts).not.toMatch(/в который раз|опять то же|уже спрашивали|быстрее/i);
+    expect(turns.at(-1)!.state.patience).toBe(turns[0].state.patience);
   });
 });
 
@@ -296,8 +297,8 @@ describe('Режимы сложности и seed', () => {
     const b = mulberry32(5);
     expect([a(), a(), a()]).toEqual([b(), b(), b()]);
   });
-  it('непонятный вопрос в учебном режиме подталкивает к теме', () => {
-    expect(ask('Абракадабра', 'learning').reply.text).toContain('«');
+  it('непонятный вопрос не вызывает случайную подсказку', () => {
+    expect(ask('Абракадабра', 'learning').reply.text).not.toContain('«');
     expect(ask('Абракадабра', 'standard').reply.text).not.toContain('«');
     expect(ask('Абракадабра', 'strict').reply.text.length).toBeLessThan(40);
   });
