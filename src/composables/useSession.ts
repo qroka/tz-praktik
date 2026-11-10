@@ -84,7 +84,6 @@ export function useSession() {
 
   function send(text: string, replyToId: string | null) {
     if (!attempt.value || attempt.value.finishedAt || hiddenId.value) return;
-    const before = summarizeProgress(scenario, attempt.value, attempt.value.engine.disclosed).explored;
     const { attempt: next, customerId } = sendQuestion(attempt.value, scenario, text, replyToId);
     attempt.value = next;
     hiddenId.value = customerId;
@@ -92,8 +91,6 @@ export function useSession() {
     window.clearTimeout(typingTimer);
     typingTimer = window.setTimeout(() => {
       hiddenId.value = null;
-      const after = summarizeProgress(scenario, next, next.engine.disclosed).explored;
-      if (after > before) notify('success', 'Открыто новое направление');
     }, typingDelay(reply?.text ?? ''));
   }
 

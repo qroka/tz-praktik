@@ -33,6 +33,25 @@ const captureInitial = computed<RequirementDraft>(() => {
   return { text: message?.text ?? '', category: fact?.category ?? '', needsClarification: false };
 });
 
+// Новое направление отмечается прямо в переписке (на телефоне всплывающее уведомление легко не заметить).
+const openedTitles = computed(() => {
+  const seen = new Set<string>();
+  const map = new Map<string, string[]>();
+  for (const message of attempt.value?.messages ?? []) {
+    if (message.role !== 'customer') continue;
+    const titles: string[] = [];
+    for (const factId of message.factIds ?? []) {
+      const fact = factById(scenario, factId);
+      if (fact && !seen.has(fact.category)) {
+        seen.add(fact.category);
+        titles.push(scenario.categories.find((item) => item.id === fact.category)?.title ?? fact.category);
+      }
+    }
+    if (titles.length) map.set(message.id, titles);
+  }
+  return map;
+});
+
 const savedCount = (messageId: string) => attempt.value?.requirements.filter((item) => item.sourceMessageId === messageId).length ?? 0;
 const quotedOf = (replyId?: string) => (replyId ? attempt.value?.messages.find((message) => message.id === replyId) : null);
 
@@ -128,6 +147,7 @@ function saveRequirement(draft: RequirementDraft) {
           :message="message"
           :quoted="quotedOf(message.replyToId)"
           :saved-count="savedCount(message.id)"
+          :opened-titles="openedTitles.get(message.id)"
           :read-only="readOnly"
           :highlighted="highlightId === message.id"
           :customer-name="scenario.customer.name"

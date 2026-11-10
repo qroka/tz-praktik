@@ -8,6 +8,8 @@ const props = defineProps<{
   savedCount: number;
   readOnly: boolean;
   highlighted: boolean;
+  /** Направления, которые этот ответ открыл впервые. */
+  openedTitles?: string[];
   customerName: string;
   customerInitials: string;
 }>();
@@ -62,6 +64,10 @@ const ui = computed(() => ({
         <UTooltip v-if="needsFollowUp" text="Задать вопрос именно по этому ответу"><UButton size="sm" color="neutral" variant="ghost" icon="i-lucide-corner-down-right" label="Уточнить" aria-label="Уточнить" class="min-h-9" @click="emit('clarify')" /></UTooltip>
       </template>
       <UTooltip v-if="!readOnly && !isCustomer && needsFollowUp" text="Вставить этот вопрос в поле ввода ещё раз"><UButton size="sm" color="neutral" variant="ghost" icon="i-lucide-rotate-ccw" label="Повторить" aria-label="Задать снова" class="min-h-9" @click="emit('repeat')" /></UTooltip>
+    </div>
+
+    <div v-if="openedTitles?.length" class="flex justify-center pb-3" data-testid="message-opened">
+      <UBadge color="primary" variant="subtle" size="md" icon="i-lucide-compass" :label="`Открыто новое направление: ${openedTitles.join(', ')}`" class="max-w-full text-center" :ui="{ label: 'whitespace-normal' }" />
     </div>
 
     <!-- Оценка вопроса: отдельной строкой по центру, не под сообщением -->
