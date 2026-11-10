@@ -38,7 +38,7 @@ const emit = defineEmits<{
       <span v-else>Добавлено вручную</span>
       <span v-if="item.mergedFrom && item.mergedFrom.length > 1">Источников: {{ item.mergedFrom.length }}</span>
       <span v-if="item.movedToSections?.length">В ТЗ: раздел {{ item.movedToSections.join(', ') }}</span>
-      <span v-if="!readOnly && !mergeMode" class="ml-auto flex gap-1">
+      <span v-if="!readOnly && !mergeMode && !tzSection" class="ml-auto flex gap-1">
         <UTooltip text="Редактировать запись"><UButton color="neutral" variant="ghost" size="md" square icon="i-lucide-pencil" aria-label="Редактировать" @click="emit('edit')" /></UTooltip>
         <UTooltip text="Отметить: требует уточнения"><UButton
           color="neutral"

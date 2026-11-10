@@ -102,7 +102,7 @@ function onSource(messageId: string) {
         Реестр требований <UTooltip text="Всего записей в реестре"><UBadge color="neutral" variant="subtle" :label="String(items.length)" data-testid="registry-count" /></UTooltip>
       </h2>
       <template v-if="!readOnly">
-        <UTooltip v-if="items.length >= 2" text="Объединить несколько записей в одну"><UButton :color="mergeMode ? 'primary' : 'neutral'" :variant="mergeMode ? 'solid' : 'outline'" icon="i-lucide-merge" label="Объединить" :aria-pressed="mergeMode" @click="mergeMode ? closeMerge() : (mergeMode = true)" /></UTooltip>
+        <UTooltip v-if="items.length >= 2 && !props.tzSection" text="Объединить несколько записей в одну"><UButton :color="mergeMode ? 'primary' : 'neutral'" :variant="mergeMode ? 'solid' : 'outline'" icon="i-lucide-merge" label="Объединить" :aria-pressed="mergeMode" @click="mergeMode ? closeMerge() : (mergeMode = true)" /></UTooltip>
         <UTooltip v-if="!props.tzSection" text="Добавить требование вручную"><UButton icon="i-lucide-plus" label="Добавить" @click="openAdd" /></UTooltip>
       </template>
     </div>

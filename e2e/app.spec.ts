@@ -356,3 +356,16 @@ test('Редактор ТЗ: справа реестр, запись добав�
   await expect(page.getByLabel(/Текст раздела/)).toHaveValue(/Поддерживать температуру воды 60/);
   await expect(page.getByTestId('add-to-tz')).toBeDisabled();
 });
+
+test('Редактор ТЗ: записи в боковом реестре нельзя править и помечать', async ({ page }) => {
+  await start(page, 'Только чтение');
+  await ask(page, 'Какая температура воды нужна после теплообменника?');
+  await capture(page, 'Поддерживать температуру воды 60 °C', 'Регулируемые параметры');
+  await nav(page, /Редактор ТЗ/).click();
+  const row = page.getByTestId('requirement');
+  await expect(row).toHaveCount(1);
+  for (const name of ['Редактировать', 'Требует уточнения', 'Противоречие', 'Удалить']) await expect(row.getByRole('button', { name })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Объединить' })).toHaveCount(0);
+  await nav(page, /Реестр требований/).click();
+  await expect(page.getByTestId('requirement').getByRole('button', { name: 'Редактировать' })).toBeVisible();
+});
