@@ -18,7 +18,8 @@ import { fileURLToPath } from 'node:url';
 
 const BASE = process.env.APP_URL ?? 'http://127.0.0.1:4173/tz-praktik/';
 const PORT = Number(process.env.DRIVER_PORT ?? 5310);
-const LOG_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'docs', 'ux-audit', 'logs');
+// LOG_DIR — каталог журналов прогона (по умолчанию базовый аудит docs/ux-audit/logs).
+const LOG_DIR = process.env.LOG_DIR ?? join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'docs', 'ux-audit', 'logs');
 const KEY = 'tz-praktikum:attempt:v1';
 mkdirSync(LOG_DIR, { recursive: true });
 

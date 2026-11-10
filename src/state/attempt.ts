@@ -69,6 +69,8 @@ export function sendQuestion(attempt: Attempt, scenario: Scenario, text: string,
     intentId: reply.intentId,
     topic: reply.topic,
     factIds: reply.factIds,
+    ...(reply.uncertainty ? { uncertainty: reply.uncertainty } : {}),
+    ...(reply.diagnostic ? { diagnostic: reply.diagnostic } : {}),
   };
   return { attempt: { ...attempt, engine: state, messages: [...attempt.messages, student, customer] }, studentId, customerId };
 }

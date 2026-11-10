@@ -9,10 +9,17 @@ import type {
   ReplyStep,
   Scenario,
   ScenarioFact,
+  GlossaryEntry,
+  SpecGroup,
+  SpecItem,
+  UnknownTopic,
   Unit,
 } from '../types';
-import { categoryProgress, discloseFacts, factById, isDisclosed, missingPrerequisites } from './factTracker';
-import { analyze, findAmbiguity, matchByExample, MIN_INTENT_SCORE, rankIntents, type Analysis, type MatchContext } from './intentMatcher';
+import { discloseFacts, factById, isDisclosed, missingPrerequisites } from './factTracker';
+import { analyze, contextConcepts, findAmbiguity, matchByExample, MIN_INTENT_SCORE, rankIntents, type Analysis, type MatchContext } from './intentMatcher';
+import { prepareMessage } from './messagePrep';
+import { normalizeText } from './normalizeText';
+import { detectQuestionFrame, frameAction } from './questionFrame';
 import type { ParsedNumber } from './normalizeText';
 import { fillTemplate, pickVariant } from './responseSelector';
 
@@ -216,6 +223,20 @@ function withImpatience(state: EngineState, input: DialogueInput, scenario: Scen
 /** Сам вопрос студента: нормализованный текст (для настоящих повторов) и спрошенная сторона темы. */
 type Question = { key: string; aspect: string | null };
 
+/** Выбор варианта из нескольких шагов: вместе с текстом возвращается шаг, чьи сведения реально прозвучали. */
+function pickFromSteps(
+  state: EngineState,
+  seed: number,
+  groupKey: string,
+  steps: ReplyStep[],
+  field: 'variants' | 'short',
+): { text: string; state: EngineState; facts: string[] } {
+  const flat = steps.flatMap((item) => item[field].map((text) => ({ text, facts: item.facts })));
+  const picked = pickVariant(state, seed, groupKey, flat.map((item) => item.text));
+  const facts = flat.find((item) => item.text === picked.text)?.facts ?? [];
+  return { ...picked, facts };
+}
+
 /** Ответ на намерение с фактами: следующий шаг раскрытия, предпосылка или повтор. */
 function answerIntent(state: EngineState, intent: Intent, input: DialogueInput, scenario: Scenario, reminder: boolean, question?: Question): Built {
   const steps = scenario.replies[intent.id] ?? [];
@@ -232,6 +253,7 @@ function answerIntent(state: EngineState, intent: Intent, input: DialogueInput, 
     askedTexts: key && !askedTexts.includes(key) ? { ...state.askedTexts, [intent.id]: [...askedTexts, key] } : state.askedTexts,
     topic: intent.topic,
     lastIntentId: intent.id,
+    lastSpec: null,
     pending: null,
   };
 
@@ -297,37 +319,34 @@ function answerIntent(state: EngineState, intent: Intent, input: DialogueInput, 
 
   // Этот вопрос задан впервые, а сведения уже прозвучали в другом ответе: это не повтор.
   if (asked === 0 && steps.length > 0) {
-    const first = steps[0];
     const picked = aspectVariants
-      ? pickVariant(current, input.seed, `${intent.id}:a:${aspect}`, aspectVariants)
-      : pickVariant(current, input.seed, `${intent.id}:0`, first.variants);
-    const facts = steps.flatMap((item) => item.facts);
+      ? { ...pickVariant(current, input.seed, `${intent.id}:a:${aspect}`, aspectVariants), facts: steps[0].facts }
+      : { ...pickVariant(current, input.seed, `${intent.id}:0`, steps[0].variants), facts: steps[0].facts };
     if (intent.kind === 'general') {
-      current = setPatience(bump({ ...picked.state, lastFactIds: facts }, 'general'), -1);
+      current = setPatience(bump({ ...picked.state, lastFactIds: picked.facts }, 'general'), -1);
       const decorated = withImpatience(current, input, scenario, picked.text);
-      return finish(decorated.state, decorated.text, 'general', intent, facts, intent.topic);
+      return finish(decorated.state, decorated.text, 'general', intent, picked.facts, intent.topic);
     }
-    return finish({ ...picked.state, lastFactIds: facts }, picked.text, 'confirmation', intent, facts, intent.topic);
+    return finish({ ...picked.state, lastFactIds: picked.facts }, picked.text, 'confirmation', intent, picked.facts, intent.topic);
   }
 
   // Другая формулировка той же темы: отвечаем полно и без упрёка, как на новый вопрос.
   if (!sameQuestion && key) {
-    const variants = aspectVariants ?? steps.flatMap((item) => item.variants);
-    if (variants.length) {
-      // У намерения с одним шагом группа общая с первым ответом: иначе тот же вариант прозвучит дважды подряд.
-      const groupKey = aspect && aspectVariants ? `${intent.id}:a:${aspect}` : steps.length === 1 ? `${intent.id}:0` : `${intent.id}:alt`;
-      const picked = pickVariant(current, input.seed, groupKey, variants);
-      const facts = steps.flatMap((item) => item.facts);
-      return finish({ ...picked.state, lastFactIds: facts }, picked.text, 'confirmation', intent, facts, intent.topic);
-    }
+    // У намерения с одним шагом группа общая с первым ответом: иначе тот же вариант прозвучит дважды подряд.
+    const picked = aspectVariants
+      ? { ...pickVariant(current, input.seed, `${intent.id}:a:${aspect}`, aspectVariants), facts: steps[0]?.facts ?? [] }
+      : steps.length === 1
+        ? { ...pickVariant(current, input.seed, `${intent.id}:0`, steps[0].variants), facts: steps[0].facts }
+        : pickFromSteps(current, input.seed, `${intent.id}:alt`, steps, 'variants');
+    if (picked.text) return finish({ ...picked.state, lastFactIds: picked.facts }, picked.text, 'confirmation', intent, picked.facts, intent.topic);
   }
 
   // Всё уже раскрыто: короткий повтор, при явной просьбе напомнить — без упрёка.
-  const shortSteps = steps.length ? steps : [];
-  const short = aspectVariants ?? shortSteps.flatMap((item) => item.short);
-  const shortKey = `${intent.id}:short`;
-  const lastStep = shortSteps[shortSteps.length - 1];
-  const shortPicked = pickVariant(current, input.seed, shortKey, short.length ? short : lastStep?.variants ?? ['Мы это уже обсуждали.']);
+  const shortPicked = aspectVariants
+    ? { ...pickVariant(current, input.seed, `${intent.id}:short`, aspectVariants), facts: steps[0]?.facts ?? [] }
+    : steps.length
+      ? pickFromSteps(current, input.seed, `${intent.id}:short`, steps, 'short')
+      : { ...pickVariant(current, input.seed, `${intent.id}:short`, ['Мы это уже обсуждали.']), facts: [] as string[] };
   current = shortPicked.state;
   const templates = reminder
     ? scenario.meta.reminderTemplates
@@ -336,12 +355,161 @@ function answerIntent(state: EngineState, intent: Intent, input: DialogueInput, 
       : scenario.meta.repeatTemplates;
   const templatePicked = pickVariant(current, input.seed, reminder ? 'meta:reminder' : asked >= 2 ? 'meta:repeatAgain' : 'meta:repeat', templates);
   current = templatePicked.state;
-  const facts = steps.flatMap((item) => item.facts);
-  current = { ...current, lastFactIds: facts };
+  current = { ...current, lastFactIds: shortPicked.facts };
   if (!reminder) current = bump(current, 'repeats');
   const text = fillTemplate(templatePicked.text, { short: shortPicked.text });
-  const decorated = { text, state: current };
-  return finish(decorated.state, decorated.text, reminder ? 'social' : 'repeat', intent, facts, intent.topic);
+  return finish(current, text, reminder ? 'social' : 'repeat', intent, shortPicked.facts, intent.topic);
+}
+
+// --- Паспортные блоки, честное неизвестное, термины ---
+
+/** Группа паспортных сведений, к которой относится вопрос: по предмету в вопросе или по теме разговора. */
+function specGroupFor(scenario: Scenario, concepts: Set<string>, topic: string | null, ownSubject: boolean): SpecGroup | null {
+  const groups = scenario.specGroups ?? [];
+  return (
+    groups.find((group) => group.subjects.some((subject) => concepts.has(subject))) ??
+    (!ownSubject && topic ? groups.find((group) => group.topics.includes(topic)) ?? null : null)
+  );
+}
+
+/** Шаг ответа, которым заказчик произносит факт (тем же текстом, что и на точный вопрос). */
+function spokenStep(scenario: Scenario, intentId: string, factId: string): { index: number; step: ReplyStep } | null {
+  const steps = scenario.replies[intentId] ?? [];
+  const index = steps.findIndex((step) => step.facts.includes(factId));
+  return index < 0 ? null : { index, step: steps[index] };
+}
+
+/**
+ * Паспортный блок: 2–4 связанных значения одного устройства в одном ответе.
+ * explicit — значения, о которых спросили прямо («мощность, подача, напор»); иначе — следующие нераскрытые.
+ */
+function answerSpec(state: EngineState, group: SpecGroup, input: DialogueInput, scenario: Scenario, explicit: SpecItem[] | null): Built {
+  const limit = explicit ? 4 : 3;
+  const candidates = explicit ?? group.items.filter((item) => !isDisclosed(state, item.factId));
+  const chosen: SpecItem[] = [];
+  for (const item of candidates) {
+    if (chosen.length >= limit) break;
+    const fact = factById(scenario, item.factId);
+    if (!fact || !spokenStep(scenario, item.intentId, item.factId)) continue;
+    // Предпосылка должна быть уже известна или прозвучать раньше в этом же ответе.
+    const missing = missingPrerequisites(state, fact).filter((id) => !chosen.some((c) => c.factId === id));
+    if (missing.length) continue;
+    chosen.push(item);
+  }
+  const intent = scenario.intents.find((item) => item.id === group.intentId) ?? null;
+  let current: EngineState = { ...state, pending: null, lastIntentId: group.intentId, lastSpec: group.id };
+  // Блок исчерпан: короткий повтор уже названного, без упрёка.
+  const recap = chosen.length === 0;
+  const items = recap ? group.items.filter((item) => isDisclosed(state, item.factId)).slice(0, 4) : chosen;
+  if (!items.length) return answerIntent(state, intent!, input, scenario, false);
+  const texts: string[] = [];
+  for (const item of items) {
+    const source = spokenStep(scenario, item.intentId, item.factId)!;
+    const picked = pickVariant(current, input.seed, recap ? `${item.intentId}:short` : `${item.intentId}:${source.index}`, recap ? source.step.short : source.step.variants);
+    current = picked.state;
+    texts.push(picked.text);
+    current = { ...current, askedIntents: { ...current.askedIntents, [item.intentId]: (current.askedIntents[item.intentId] ?? 0) + 1 } };
+  }
+  const factIds = items.map((item) => item.factId);
+  const fresh = factIds.filter((id) => !isDisclosed(state, id));
+  current = discloseFacts(current, factIds);
+  const firstIntent = scenario.intents.find((item) => item.id === items[0].intentId);
+  current = { ...current, lastFactIds: factIds, topic: firstIntent?.topic ?? intent?.topic ?? state.topic };
+  let text = texts.join(' ');
+  const remaining = group.items.filter((item) => !isDisclosed(current, item.factId));
+  if (!explicit && !recap && remaining.length && scenario.meta.specMore?.length) {
+    const more = pickVariant(current, input.seed, 'meta:specMore', scenario.meta.specMore);
+    current = more.state;
+    text = `${text} ${more.text}`;
+  }
+  if (fresh.length) {
+    current = setPatience(current, 1);
+    current = bump(current, 'askedMandatory', fresh.filter((id) => factById(scenario, id)?.requirementType === 'mandatory').length);
+  }
+  return finish(current, text, fresh.length ? 'useful' : 'confirmation', intent, factIds, current.topic);
+}
+
+/** Значения группы, о которых спросили прямо: по признакам вопроса. */
+function explicitSpecItems(group: SpecGroup, concepts: Set<string>): SpecItem[] {
+  const seen = new Set<string>();
+  return group.items.filter((item) => {
+    if (seen.has(item.factId) || !item.cues.some((cue) => concepts.has(cue))) return false;
+    seen.add(item.factId);
+    return true;
+  });
+}
+
+const SPEC_CUE = /характеристик|паспорт|какие данные|что известно|какие (у него|у нее|у них) |параметры (насоса|теплообменник|теплоносител)|параметры .*(известн|есть)|что (у вас |у нас )?(по|с) (насос|теплообмен|теплонос|питани|электропитани|электрик)|расскаж\S* (про|о|об|по) (насос|теплообмен|теплонос|питани|электропитани|электрик|услови)/;
+
+/** Число без единицы получает единицу величины из вопроса: «давление 0,30» — это МПа, а не герцы частотника. */
+function unitHinted(numbers: ParsedNumber[], concepts: Set<string>): ParsedNumber[] {
+  const hint: Unit | null = concepts.has('press') ? 'mpa' : concepts.has('temp') ? 'c' : concepts.has('flow') ? 'm3h' : concepts.has('powerkw') ? 'kw' : null;
+  return hint ? numbers.map((item) => (item.unit ? item : { ...item, unit: hint })) : numbers;
+}
+
+function matchUnknown(analysis: Analysis, scenario: Scenario, topic0: string | null): UnknownTopic | null {
+  const text = ` ${analysis.normalized} `;
+  for (const topic of scenario.unknownTopics ?? []) {
+    if (topic.requiresNotFuture && analysis.frame.future) continue;
+    // Короткое уточнение в теме разговора («он один? резервного нет?» про насос).
+    if (topic.contextPattern && topic0 && topic.contextTopics?.includes(topic0) && new RegExp(topic.contextPattern).test(text)) return topic;
+    if (topic.pattern && !new RegExp(topic.pattern).test(text)) continue;
+    if (topic.concepts && !topic.concepts.every((group) => group.some((concept) => analysis.concepts.has(concept)))) continue;
+    if (topic.excludeConcepts?.some((concept) => analysis.concepts.has(concept))) continue;
+    if (!topic.pattern && !topic.concepts) continue;
+    return topic;
+  }
+  return null;
+}
+
+/** Оговорка дополняет ответ по фактам, только если этот ответ — о той же теме (appendTo); иначе заменяет его. */
+const appendsTo = (unknown: UnknownTopic | null, topic: string | null) => Boolean(unknown?.appendTo?.length && topic && unknown.appendTo.includes(topic));
+
+function answerUnknown(state: EngineState, topic: UnknownTopic, input: DialogueInput): Built {
+  const picked = pickVariant(state, input.seed, `unknown:${topic.id}`, topic.replies);
+  const uncertain = state.uncertain ?? [];
+  const current: EngineState = {
+    ...picked.state,
+    pending: null,
+    lastFactIds: [],
+    lastSpec: null,
+    uncertain: uncertain.includes(topic.id) ? uncertain : [...uncertain, topic.id],
+  };
+  const built = finish(current, picked.text, 'unknown_found', null, [], state.topic);
+  return { ...built, reply: { ...built.reply, uncertainty: { id: topic.id, kind: topic.kind, label: topic.label, category: topic.category } } };
+}
+
+function matchGlossary(analysis: Analysis, scenario: Scenario): GlossaryEntry | null {
+  const text = ` ${analysis.normalized} `;
+  if (!new RegExp(DEFINITION_CUE).test(text)) return null;
+  return (scenario.glossary ?? []).find((entry) => new RegExp(entry.pattern).test(text)) ?? null;
+}
+
+/** Предмет непонятого вопроса — для одного уточняющего вопроса по нему. */
+const SUBJECT_LABEL: Record<string, string> = {
+  power: 'электропитанию', pump: 'насосу', motor: 'двигателю', vfd: 'частотнику', hx: 'теплообменнику', hc: 'теплоносителю',
+  valve: 'клапану', air: 'сжатому воздуху', temp: 'температуре', press: 'давлению', flow: 'расходу', modes: 'режимам',
+  hmi: 'экрану оператора', cabinet: 'шкафу', sensor: 'датчикам', alarm: 'авариям', log: 'журналу', trend: 'графикам',
+  plc: 'контроллеру', docs: 'документации', cable: 'кабелям', flowmeter: 'расходомеру',
+};
+
+function answerMiss(state: EngineState, analysis: Analysis, input: DialogueInput, scenario: Scenario): Built {
+  const streak = (state.missStreak ?? 0) + 1;
+  const subject = Object.keys(SUBJECT_LABEL).find((concept) => analysis.concepts.has(concept));
+  const meta = scenario.meta;
+  // Два непонятых вопроса подряд: не повторять одно и то же, а подсказать, как спросить.
+  if (streak >= 2 && meta.fallbackGuide?.length) {
+    const picked = pickVariant(state, input.seed, 'meta:fallbackGuide', meta.fallbackGuide);
+    const current = bump({ ...picked.state, pending: null, missStreak: 0 }, 'unrecognized');
+    return finish(current, picked.text, 'unrecognized', null, [], state.topic);
+  }
+  if (subject && meta.fallbackSubject?.length) {
+    const picked = pickVariant(state, input.seed, 'meta:fallbackSubject', meta.fallbackSubject);
+    const current = bump({ ...picked.state, pending: null, missStreak: streak }, 'clarifications');
+    return finish(current, fillTemplate(picked.text, { subject: SUBJECT_LABEL[subject] }), 'clarify', null, [], state.topic);
+  }
+  const built = answerFallback(state, input, scenario);
+  return { ...built, state: { ...built.state, missStreak: streak } };
 }
 
 function answerAmbiguity(
@@ -368,17 +536,10 @@ function answerFallback(state: EngineState, input: DialogueInput, scenario: Scen
     const picked = pickVariant(current, input.seed, 'meta:fallbackStrict', scenario.meta.fallbackStrict);
     return finish(picked.state, picked.text, 'unrecognized', null, [], current.topic);
   }
+  // Без подсказки «случайной» темы: студент мог спрашивать ровно о ней.
   const picked = pickVariant(current, input.seed, 'meta:fallback', scenario.meta.fallback);
   current = picked.state;
-  // Заказчик сам подсказывает, о чём можно спросить: первая ещё не затронутая тема.
-  const open = categoryProgress(scenario, current.disclosed).find((row) => row.found === 0);
-  let fallbackText = picked.text;
-  if (open) {
-    const hint = pickVariant(current, input.seed, 'meta:fallbackHint', scenario.meta.fallbackHint);
-    current = hint.state;
-    fallbackText = `${picked.text} ${fillTemplate(hint.text, { area: open.title })}`;
-  }
-  const decorated = withImpatience(current, input, scenario, fallbackText);
+  const decorated = withImpatience(current, input, scenario, picked.text);
   return finish(decorated.state, decorated.text, 'unrecognized', null, [], current.topic);
 }
 
@@ -422,6 +583,8 @@ function answerMeta(state: EngineState, intent: Intent, input: DialogueInput, sc
 
   switch (intent.id) {
     case 'followup_more': {
+      const spec = (scenario.specGroups ?? []).find((group) => group.id === state.lastSpec);
+      if (spec && spec.items.some((item) => !isDisclosed(state, item.factId))) return answerSpec(state, spec, input, scenario, null);
       const lastIntent = scenario.intents.find((item) => item.id === ctxIntentId);
       const steps = lastIntent ? scenario.replies[lastIntent.id] ?? [] : [];
       if (lastIntent && nextStep(state, steps)) return answerIntent(state, lastIntent, input, scenario, false);
@@ -468,24 +631,48 @@ function answerMeta(state: EngineState, intent: Intent, input: DialogueInput, sc
 }
 
 const REMINDER_CUE = /(напомн|повтор|еще раз|забыл)/;
+/** Вопрос просит определение термина: «что такое…», «что значит…», «… это что?». */
+const DEFINITION_CUE = String.raw`что так\S*|что значит|что означает|что это (за|такое)|это что|объясните|поясните|расшифруйте|в смысле`;
+const INTERROGATIVE = /(^|\s)(какой|какая|какое|какие|каким|какую|каков\S*|скольк\S*|чем|когда|где|куда|зачем|почему|насколько|ли)(\s|$)/;
+const PRONOUN = /(^|\s)(он|она|оно|они|его|ему|им|ним|него|нее|нему|у него|у нее)(\s|$)/;
+const ELLIPSIS_START = new Set(['а', 'и', 'ну', 'тогда']);
 
 // --- Главная функция ---
 
 export function respond(previous: EngineState, input: DialogueInput, scenario: Scenario): { state: EngineState; reply: EngineReply } {
   let state: EngineState = { ...previous, turn: previous.turn + 1 };
+
+  // Этап 1. Вежливость и вводная фраза не перехватывают вопрос.
+  const prepared = prepareMessage(input.text);
   // В сообщении несколько вопросов: разбираем первый, про остальные заказчик скажет отдельно.
-  const questionParts = input.text.split(/(?<=\?)\s+/).map((part) => part.trim()).filter(Boolean);
+  const questionParts = prepared.body.split(/(?<=\?)\s+/).map((part) => part.trim()).filter(Boolean);
   const severalQuestions = questionParts.length >= 2 && questionParts.every((part) => part.length > 8);
-  const questionText = severalQuestions ? questionParts[0] : input.text;
-  const analysis = analyze(questionText, scenario);
+  const questionText = severalQuestions ? questionParts[0] : prepared.body;
+  let analysis = analyze(questionText, scenario);
   const question: Question = { key: analysis.normalized, aspect: analysis.frame.aspect };
 
   const baseCtx: MatchContext = { topic: input.replyTo?.topic ?? state.topic, lastAttributes: input.replyTo ? [] : state.lastAttributes };
+
+  // Этап 3. Неполный вопрос («А как им сейчас управляют?») берёт предмет из разговора — и смысловая рамка тоже.
+  const ownSubject = scenario.subjectConcepts.some((concept) => analysis.concepts.has(concept));
+  const elliptical = analysis.tokens.length <= 6 || ELLIPSIS_START.has(analysis.tokens[0]) || PRONOUN.test(analysis.normalized);
+  if (!ownSubject && elliptical) {
+    const carriedSubjects = [...contextConcepts(analysis, baseCtx, scenario)].filter((concept) => scenario.subjectConcepts.includes(concept));
+    if (carriedSubjects.length) {
+      const frame = detectQuestionFrame(analysis.normalized, new Set([...analysis.concepts, ...carriedSubjects]));
+      analysis = { ...analysis, frame };
+      question.aspect = frame.aspect;
+    }
+  }
+
   const rawTop = rankIntents(analysis, baseCtx, scenario)[0];
   const rawIsService = rawTop && rawTop.score >= 3 && (rawTop.intent.kind === 'social' || rawTop.intent.kind === 'meta');
   // Ответ на встречный вопрос дополняет прошлый вопрос, только если в нём есть что-то по делу.
   const pendingSubjects = scenario.subjectConcepts.filter((c) => state.pending?.concepts.includes(c));
-  const changesSubject = scenario.subjectConcepts.some((c) => analysis.concepts.has(c) && !pendingSubjects.includes(c) && !['hc', 'air'].includes(c));
+  // Если встречный вопрос как раз просил назвать предмет («предупреждение по какому параметру?»), названный предмет — это ответ, а не новая тема.
+  const pendingAsksSubject = ['warning', 'alarm', 'tolerance', 'limit', 'sensor_loss'].includes(state.pending?.ambiguityId ?? '');
+  // …но только если прошлый вопрос был без предмета: «предупреждение по температуре» → «а по давлению?» — уже другая тема.
+  const changesSubject = !(pendingAsksSubject && pendingSubjects.length === 0) && scenario.subjectConcepts.some((c) => analysis.concepts.has(c) && !pendingSubjects.includes(c) && !['hc', 'air'].includes(c));
   // «Перегрев» и «нагрев» — это про температуру, даже если слова «температура» в вопросе нет.
   const newTemperature = ['heat', 'overheat'].some((c) => analysis.concepts.has(c) && !state.pending?.concepts.includes(c));
   const usePending = state.pending && analysis.concepts.size > 0 && !rawIsService && !changesSubject && !newTemperature;
@@ -499,116 +686,218 @@ export function respond(previous: EngineState, input: DialogueInput, scenario: S
 
   // Запоминаем признак вопроса, чтобы понять следующее короткое уточнение.
   const attributes = scenario.attributeConcepts.filter((concept) => concepts.has(concept));
-  const rememberAttributes = (result: Built): Built => ({
-    ...result,
-    state: { ...result.state, lastAttributes: attributes },
-  });
+  const frame = analysis.frame;
 
   let reason = 'Правила и контекст';
   let score: number | null = null;
-  const update = (result: Built): Built => rememberAttributes({ ...result, reply: { ...result.reply, diagnostic: { reason, score } } });
+  const diagnosticFrame = {
+    time: frame.time,
+    action: frameAction(frame, concepts),
+    subjects: scenario.subjectConcepts.filter((concept) => concepts.has(concept)),
+    attributes,
+    prefix: prepared.prefix,
+  };
+  const unknown = matchUnknown(fullAnalysis, scenario, ctx.topic);
 
-  // Смысловые ограничения действуют до приоритетных примеров пакета.
-  const frame = analysis.frame;
+  /** Этапы 6–7: ответное приветствие, учёт непонятых подряд, диагностика. */
+  const update = (result: Built): Built => {
+    let text = result.reply.text;
+    let next = result.state;
+    if (prepared.greeted && result.reply.intentId !== 'greeting' && scenario.meta.greetBack?.length) {
+      const hello = pickVariant(next, input.seed, 'meta:greetBack', scenario.meta.greetBack);
+      next = hello.state;
+      text = `${hello.text} ${text}`;
+    }
+    const missed = result.reply.quality === 'unrecognized' || (result.reply.quality === 'clarify' && reason === 'Непонятый вопрос: уточнение по предмету');
+    next = { ...next, lastAttributes: attributes, missStreak: missed ? next.missStreak ?? 0 : 0 };
+    return { state: next, reply: { ...result.reply, text, diagnostic: { reason, score, frame: diagnosticFrame } } };
+  };
+
+  /** Честная оговорка о неизвестном: заменяет ответ невпопад или дополняет ответ по фактам рядом. */
+  const withUnknown = (result: Built): Built => {
+    if (!unknown) return result;
+    const answeredFacts = result.reply.factIds.length > 0 && ['useful', 'confirmation', 'unknown_found'].includes(result.reply.quality);
+    if (appendsTo(unknown, result.reply.topic) && answeredFacts) {
+      const extra = answerUnknown(result.state, unknown, input);
+      return { state: extra.state, reply: { ...result.reply, text: `${result.reply.text} ${extra.reply.text}`, uncertainty: extra.reply.uncertainty } };
+    }
+    reason = `Сведений нет: ${unknown.label}`;
+    return answerUnknown({ ...state, pending: null }, unknown, input);
+  };
+
   const framedAnswer = (id: string) => {
     reason = 'Смысл вопроса: время и предмет';
-    return update(answerIntent({ ...state, pending: null }, scenario.intents.find((item) => item.id === id)!, input, scenario, false, question));
+    return answerIntent({ ...state, pending: null }, scenario.intents.find((item) => item.id === id)!, input, scenario, false, question);
   };
-  if (frame.currentPump || frame.responsibility || frame.mixedModes) {
-    reason = 'Недостаточно исходных данных / уточнение времени';
-    const text = frame.currentPump
-      ? 'Способ управления существующим насосом у меня не уточнён. Это нужно проверить на объекте; требование к будущему управлению обсудим отдельно.'
-      : frame.responsibility
-        ? 'Предложите подходящее оборудование по требованиям и согласуйте с нами. Точное распределение ответственности у меня не определено.'
-        : 'Вы спрашиваете, как узел работает сейчас, или какие режимы предусмотреть после автоматизации?';
-    return update(finish({ ...state, pending: null, topic: null, lastFactIds: [], lastIntentId: null }, text, frame.mixedModes ? 'clarify' : 'unknown_found', null, [], null));
-  }
-  if (frame.currentOperation && !analysis.numbers.length) return framedAnswer('purpose_current');
-  if (frame.inventory) {
-    const result = framedAnswer('object_desc');
-    if (frame.aspect && scenario.aspectReplies?.object_desc?.[frame.aspect]) return result;
-    return { ...result, reply: { ...result.reply, text: `${result.reply.text} Полный перечень установленных приборов и исполнительных устройств нужно уточнить на объекте.` } };
-  }
-  if (frame.goal) return framedAnswer('purpose_goal');
 
-  // 1. Утверждение с числом: сверяем и при необходимости поправляем студента.
-  const isClaim =
-    analysis.numbers.length > 0 &&
-    !concepts.has('propose') &&
-    !concepts.has('mandatoryw') &&
-    (CLAIM_CUE.test(` ${analysis.normalized} `) || /\?\s*$/.test(questionText));
-  if (isClaim) {
-    const claimResult = answerClaim(state, checkClaim(concepts, analysis.numbers, scenario, ctxFacts, state.disclosed, true), input, scenario);
-    if (claimResult) { reason = 'Проверка числового утверждения'; return update(claimResult); }
-  }
-
-  if (rawIsService && rawTop.intent.kind === 'social') {
-    reason = 'Социальная реплика'; score = rawTop.score;
-    return update(answerIntent({ ...state, pending: null }, rawTop.intent, input, scenario, false, question));
-  }
-
-  // Вопрос почти дословно совпадает с вопросом из файла преподавателя — отвечаем этой темой.
-  const priority = matchByExample(analysis, scenario, { priority: true, min: 0.6 });
-  if (priority) {
-    reason = 'Вопрос из пакета ответов (сходство)';
-    score = priority.similarity;
-    const chosen = priority.intent;
-    if (chosen.kind === 'meta') return update(answerMeta(state, chosen, input, scenario, ctxFacts, ctxIntent));
-    return update(answerIntent({ ...state, pending: null }, chosen, input, scenario, REMINDER_CUE.test(analysis.normalized), question));
-  }
-
-  const ranked = rankIntents(analysis, ctx, scenario);
-  const top = ranked[0];
-  score = top?.score ?? null;
-  const topIsStrong = top && top.score >= MIN_INTENT_SCORE;
-
-  // 2. Служебные реплики и уточнения не требуют разбора неоднозначности.
-  if (topIsStrong && (top.intent.kind === 'social' || top.intent.kind === 'meta') && top.score >= 3) {
-    if (top.intent.kind === 'meta') return update(answerMeta(state, top.intent, input, scenario, ctxFacts, ctxIntent));
-    return update(answerIntent({ ...state, pending: null }, top.intent, input, scenario, false, question));
-  }
-
-  // 3. Неоднозначный предмет — встречный вопрос вместо угадывания.
-  const ambiguity = findAmbiguity(fullAnalysis, ctx, scenario);
-  if (ambiguity) { reason = `Неоднозначность: ${ambiguity.id}`; return update(answerAmbiguity(state, ambiguity, analysis, input)); }
-
-  // 4. Правила ничего не нашли: пробуем самый похожий пример формулировки.
-  if (!topIsStrong) {
-    const similar = matchByExample(analysis, scenario, { priority: false, min: 0.5 });
-    if (similar && similar.intent.kind !== 'meta') {
-      reason = 'Пример сценария (сходство)'; score = similar.similarity;
-      return update(answerIntent({ ...state, pending: null }, similar.intent, input, scenario, false, question));
+  /** Этапы 2, 4, 5: рамка → правила и примеры → fallback. */
+  const route = (): Built => {
+    // Термин: короткое пояснение без значений.
+    const term = matchGlossary(analysis, scenario);
+    if (term) {
+      reason = 'Пояснение термина';
+      return finish({ ...state, pending: null, lastFactIds: [] }, term.text, 'social', null, [], state.topic);
     }
-    // «А летом?» без предмета в разговоре: переспрашиваем, а не отвечаем, что мы говорим о разном.
-    const fragment = /^(?:а |и )?(летом|зимой|после насоса|до насоса|на входе|на выходе)$/.exec(analysis.normalized);
-    if (fragment) {
-      reason = 'Обрывочный вопрос без предмета';
-      const picked = pickVariant(state, input.seed, 'meta:needSubject', scenario.meta.needSubject);
-      const text = fillTemplate(picked.text, { piece: fragment[1] });
-      return update(finish(bump({ ...picked.state, pending: null }, 'clarifications'), text, 'clarify', null, [], state.topic));
+    if (unknown && !unknown.appendTo?.length) {
+      reason = `Сведений нет: ${unknown.label}`;
+      return answerUnknown({ ...state, pending: null }, unknown, input);
     }
-    reason = 'Нет подходящего правила или примера';
-    return update(answerFallback(state, input, scenario));
-  }
 
-  // 5. В одном сообщении несколько предметов: отвечаем только на первый.
-  const reminder = REMINDER_CUE.test(analysis.normalized);
-  const result = answerIntent(state, top.intent, input, scenario, reminder, question);
-  const subjects = scenario.subjectConcepts.filter((concept) => analysis.concepts.has(concept));
-  const second = ranked.find(
-    (item) =>
-      item.intent.topic !== top.intent.topic &&
-      !item.viaContext &&
-      (item.intent.kind === 'fact' || item.intent.kind === 'unknown') &&
-      item.score >= top.score - 1.5,
-  );
-  const joined = subjects.length >= 2 && Boolean(second) && /(^|\s)и(\s|$)/.test(analysis.normalized);
-  if ((severalQuestions || joined) && result.reply.quality !== 'general') {
+    // Смысловые ограничения действуют до приоритетных примеров пакета.
+    if (frame.currentPump || frame.responsibility || frame.mixedModes) {
+      reason = 'Недостаточно исходных данных / уточнение времени';
+      const text = frame.currentPump
+        ? 'Способ управления существующим насосом у меня не уточнён. Это нужно проверить на объекте; требование к будущему управлению обсудим отдельно.'
+        : frame.responsibility
+          ? 'Предложите подходящее оборудование по требованиям и согласуйте с нами. Точное распределение ответственности у меня не определено.'
+          : 'Вы спрашиваете, как узел работает сейчас, или какие режимы предусмотреть после автоматизации?';
+      const built = finish({ ...state, pending: null, topic: frame.currentPump ? 'pump' : null, lastFactIds: [], lastIntentId: null }, text, frame.mixedModes ? 'clarify' : 'unknown_found', null, [], frame.currentPump ? 'pump' : null);
+      if (frame.mixedModes) return built;
+      const kind = frame.currentPump ? 'survey' : 'undefined';
+      const label = frame.currentPump ? 'Как сейчас управляется насос' : 'Кто выбирает оборудование';
+      const category = frame.currentPump ? 'actuators' : 'reliability';
+      return { ...built, reply: { ...built.reply, uncertainty: { id: frame.currentPump ? 'pump_control_now' : 'responsibility', kind, label, category } } };
+    }
+    if (frame.powerLoss) return framedAnswer('valve_fail_power');
+    if (frame.dryRun) return framedAnswer('press_in_run');
+    if (frame.noFlowInterlock) return framedAnswer('flow_low_action');
+    if (frame.pressControl) return framedAnswer('pump_control');
+    if (frame.currentOperation && !analysis.numbers.length) return framedAnswer('purpose_current');
+    if (frame.inventory || frame.composition) {
+      const result = framedAnswer('object_desc');
+      if (!frame.inventory || (frame.aspect && scenario.aspectReplies?.object_desc?.[frame.aspect])) return result;
+      return { ...result, reply: { ...result.reply, text: `${result.reply.text} Полный перечень установленных приборов и исполнительных устройств нужно уточнить на объекте.` } };
+    }
+    if (frame.monitorFuture) return framedAnswer('hmi_main');
+    if (frame.goal) return framedAnswer('purpose_goal');
+
+    // Числовое утверждение — только при явной проверке: «значит…», «правильно понял…» или короткое «60 градусов?».
+    // Число в вопросе («отклонение от 60 °C?») и варианты («4–20 мА или 0–10 В?») — это контекст, а не утверждение.
+    const fullNormalized = normalizeText(input.text);
+    // «70? 75?», «4–20 мА или 0–10 В?» — варианты, а не утверждение.
+    const alternatives = analysis.numbers.length >= 2 && (/(^|\s)или(\s|$)/.test(analysis.normalized) || (input.text.match(/\?/g) ?? []).length >= 2);
+    const shortCheck = /\?\s*$/.test(questionText) && analysis.tokens.length <= 5 && !INTERROGATIVE.test(analysis.normalized);
+    const isClaim =
+      analysis.numbers.length > 0 &&
+      !alternatives &&
+      !concepts.has('propose') &&
+      !concepts.has('mandatoryw') &&
+      ((CLAIM_CUE.test(` ${fullNormalized} `) && !INTERROGATIVE.test(analysis.normalized)) || shortCheck);
+    if (isClaim) {
+      const claimResult = answerClaim(state, checkClaim(concepts, unitHinted(analysis.numbers, concepts), scenario, ctxFacts, state.disclosed, true), input, scenario);
+      if (claimResult) { reason = 'Проверка числового утверждения'; return claimResult; }
+    }
+
+    if (rawIsService && rawTop.intent.kind === 'social') {
+      reason = 'Социальная реплика'; score = rawTop.score;
+      // «Нам нужно сделать ТЗ» — студент о своей задаче: заказчик готов отвечать.
+      const intent = concepts.has('weNeed') && concepts.has('tzword') ? scenario.intents.find((item) => item.id === 'greeting') ?? rawTop.intent : rawTop.intent;
+      return answerIntent({ ...state, pending: null }, intent, input, scenario, false, question);
+    }
+    if (concepts.has('weNeed') && concepts.has('tzword') && analysis.tokens.length <= 8) {
+      reason = 'Студент о своей задаче';
+      return answerIntent({ ...state, pending: null }, scenario.intents.find((item) => item.id === 'greeting')!, input, scenario, false, question);
+    }
+
+    // Паспортный блок: несколько значений одного устройства, о которых спросили прямо.
+    // Широкий вопрос о паспорте («какие характеристики?», «что по насосу?», «расскажите про теплообменник») — блок.
+    // В разговоре об аварии «что с насосом в этот момент?» — это реакция системы, а не паспорт.
+    const group = specGroupFor(scenario, concepts, ctx.topic, ownSubject);
+    const specCue = SPEC_CUE.test(` ${analysis.normalized} `) && !(concepts.has('reaction') && !(group && ctx.topic && group.topics.includes(ctx.topic)) && Boolean(ctx.topic));
+    if (group) {
+      const explicit = explicitSpecItems(group, concepts);
+      if (explicit.length >= 2) { reason = `Паспорт: ${group.title}, несколько значений`; return answerSpec(state, group, input, scenario, explicit); }
+      if (specCue && explicit.length === 0) { reason = `Паспорт: ${group.title}`; return answerSpec(state, group, input, scenario, null); }
+    }
+    const asSpec = (intent: Intent): Built | null => {
+      const spec = (scenario.specGroups ?? []).find((item) => item.intentId === intent.id);
+      if (!spec || !specCue) return null;
+      reason = `Паспорт: ${spec.title}`;
+      return answerSpec(state, spec, input, scenario, null);
+    };
+
+    // Вопрос почти дословно совпадает с вопросом из файла преподавателя — отвечаем этой темой.
+    const priority = matchByExample(analysis, scenario, { priority: true, min: 0.6 });
+    if (priority) {
+      reason = 'Вопрос из пакета ответов (сходство)';
+      score = priority.similarity;
+      const chosen = priority.intent;
+      if (chosen.kind === 'meta') return answerMeta(state, chosen, input, scenario, ctxFacts, ctxIntent);
+      return asSpec(chosen) ?? answerIntent({ ...state, pending: null }, chosen, input, scenario, REMINDER_CUE.test(analysis.normalized), question);
+    }
+
+    const ranked = rankIntents(analysis, ctx, scenario);
+    const top = ranked[0];
+    score = top?.score ?? null;
+    const topIsStrong = top && top.score >= MIN_INTENT_SCORE;
+
+    // Служебные реплики и уточнения не требуют разбора неоднозначности.
+    if (topIsStrong && (top.intent.kind === 'social' || top.intent.kind === 'meta') && top.score >= 3) {
+      if (top.intent.kind === 'meta') return answerMeta(state, top.intent, input, scenario, ctxFacts, ctxIntent);
+      return answerIntent({ ...state, pending: null }, top.intent, input, scenario, false, question);
+    }
+
+    // Неоднозначный предмет — встречный вопрос вместо угадывания.
+    const ambiguity = findAmbiguity(fullAnalysis, ctx, scenario);
+    if (ambiguity) { reason = `Неоднозначность: ${ambiguity.id}`; return answerAmbiguity(state, ambiguity, analysis, input); }
+
+    // Правила ничего не нашли: пробуем самый похожий пример формулировки.
+    if (!topIsStrong) {
+      const similar = matchByExample(analysis, scenario, { priority: false, min: 0.5 });
+      if (similar && similar.intent.kind !== 'meta') {
+        reason = 'Пример сценария (сходство)'; score = similar.similarity;
+        return asSpec(similar.intent) ?? answerIntent({ ...state, pending: null }, similar.intent, input, scenario, false, question);
+      }
+      // «А летом?» без предмета в разговоре: переспрашиваем, а не отвечаем, что мы говорим о разном.
+      const fragment = /^(?:а |и )?(летом|зимой|после насоса|до насоса|на входе|на выходе)$/.exec(analysis.normalized);
+      if (fragment) {
+        reason = 'Обрывочный вопрос без предмета';
+        const picked = pickVariant(state, input.seed, 'meta:needSubject', scenario.meta.needSubject);
+        const text = fillTemplate(picked.text, { piece: fragment[1] });
+        return finish(bump({ ...picked.state, pending: null }, 'clarifications'), text, 'clarify', null, [], state.topic);
+      }
+      reason = Object.keys(SUBJECT_LABEL).some((c) => analysis.concepts.has(c)) ? 'Непонятый вопрос: уточнение по предмету' : 'Нет подходящего правила или примера';
+      return answerMiss(state, analysis, input, scenario);
+    }
+
+    const specAnswer = asSpec(top.intent);
+    if (specAnswer) return specAnswer;
+    const reminder = REMINDER_CUE.test(analysis.normalized);
+    const result = answerIntent(state, top.intent, input, scenario, reminder, question);
+
+    // Второй предмет в одном предложении с «и» — мягко предложить спросить следом, только если это действительно другая тема.
+    const subjects = scenario.subjectConcepts.filter((concept) => analysis.concepts.has(concept));
+    const second = ranked.find(
+      (item) =>
+        item.intent.topic !== top.intent.topic &&
+        !item.viaContext &&
+        (item.intent.kind === 'fact' || item.intent.kind === 'unknown') &&
+        item.score >= top.score - 1.5,
+    );
+    const joined = subjects.length >= 2 && Boolean(second) && /(^|\s)и(\s|$)/.test(analysis.normalized);
+    if (joined && result.reply.quality === 'useful') return withMulti(result);
+    return result;
+  };
+
+  /** Вторая часть сообщения о другом: заказчик предлагает спросить следом (или сразу честно говорит о неизвестном). */
+  const withMulti = (result: Built): Built => {
     const picked = pickVariant(result.state, input.seed, 'meta:multi', scenario.meta.multiQuestion);
-    return update({
-      state: picked.state,
-      reply: { ...result.reply, text: `${result.reply.text} ${picked.text}` },
-    });
+    return { state: picked.state, reply: { ...result.reply, text: `${result.reply.text} ${picked.text}` } };
+  };
+
+  const routed = route();
+  let result = unknown?.appendTo?.length ? withUnknown(routed) : routed;
+  if (severalQuestions && result.reply.quality !== 'general') {
+    const tail = analyze(questionParts.slice(1).join(' '), scenario);
+    const tailUnknown = matchUnknown(tail, scenario, ctx.topic);
+    const tailSubjects = scenario.subjectConcepts.filter((concept) => tail.concepts.has(concept));
+    const sameSubject = tailSubjects.length === 0 || tailSubjects.every((concept) => concepts.has(concept));
+    if (tailUnknown && tailUnknown.id !== unknown?.id) {
+      const extra = answerUnknown(result.state, tailUnknown, input);
+      result = { state: extra.state, reply: { ...result.reply, text: `${result.reply.text} ${extra.reply.text}`, uncertainty: result.reply.uncertainty ?? extra.reply.uncertainty } };
+    } else if (!sameSubject && !tailUnknown) {
+      result = withMulti(result);
+    }
   }
   return update(result);
 }

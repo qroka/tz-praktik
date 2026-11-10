@@ -1,0 +1,1 @@
+{"n":1,"question":"Какая температура должна быть на выходе и насколько она может отклоняться?","reply":"Мы держимся 60 градусов. Такая вода мойке и нужна. Плюс-минус 2 градуса нас устраивает.","quality":"useful","intentId":"temp_tolerance","factIds":["temp_tolerance","temp_setpoint"],"newFacts":["temp_setpoint","temp_tolerance"],"ms":1725}

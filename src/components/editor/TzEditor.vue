@@ -9,7 +9,7 @@ import { countWords } from '../../state/learningProgress';
 const props = defineProps<{ layout: Layout }>();
 const emit = defineEmits<{ finish: [] }>();
 
-const { attempt, scenario, update } = useSession();
+const { attempt, scenario, update, summary } = useSession();
 
 const total = scenario.tzSections.length;
 const section = computed(() => scenario.tzSections.find((item) => item.id === attempt.value!.activeSection) ?? scenario.tzSections[0]);
@@ -25,6 +25,11 @@ const selected = computed({
   get: () => section.value.id,
   set: (id: number) => go(id),
 });
+
+// Мягкое напоминание: направления раздела, о которых заказчика ещё не спрашивали. Только названия, без значений.
+const untouched = computed(() =>
+  (summary.value?.rows ?? []).filter((row) => section.value.categories.includes(row.id) && row.status === 'none').map((row) => row.title),
+);
 
 const go = (id: number) => update((current) => ({ ...current, activeSection: id }));
 
@@ -70,6 +75,14 @@ function onInput(value: string | number | undefined) {
         <h2 class="text-xl font-semibold">{{ section.title }}</h2>
         <USelect v-if="props.layout !== 'wide'" v-model="selected" :items="sectionItems" aria-label="Раздел ТЗ" class="w-full" />
         <UAlert color="primary" variant="subtle" icon="i-lucide-lightbulb" :description="section.hint" data-testid="tz-hint" />
+        <UAlert
+          v-if="untouched.length && !attempt?.finishedAt"
+          color="neutral"
+          variant="subtle"
+          icon="i-lucide-message-circle-question"
+          :description="`Об этом заказчика ещё не спрашивали: ${untouched.join(', ')}. Можно вернуться в диалог или отметить в тексте, что это нужно согласовать.`"
+          data-testid="tz-untouched"
+        />
       </div>
 
       <UTextarea

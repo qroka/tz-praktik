@@ -1,0 +1,1 @@
+{"n":1,"question":"Какие характеристики у насоса?","reply":"Центробежный. По табличке 2,2 киловатта. Номинальная подача около 5 кубов в час. Остальное по паспорту — спросите, если нужно.","quality":"useful","intentId":"about_pump","factIds":["pump_type","pump_power","pump_nominal"],"newFacts":["pump_type","pump_power","pump_nominal"],"ms":1917}

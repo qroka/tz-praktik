@@ -1,0 +1,1 @@
+{"n":1,"question":"Какое давление нужно после насоса и какой допустимый разброс?","reply":"На выходе надо держать 0,3 мегапаскаля. Диапазон нормы — 0,27–0,33.","quality":"useful","intentId":"press_out_range","factIds":["press_out_range","press_out_setpoint"],"newFacts":["press_out_setpoint","press_out_range"],"ms":1442}

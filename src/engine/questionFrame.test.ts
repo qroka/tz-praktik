@@ -29,7 +29,7 @@ const cases: [string, string | null, EngineReply['quality'], string[], string][]
   ["Как предлагаете управлять насосом после автоматизации?", "pump_control", "useful", ["pump_vfd"], "частот"],
   ["Какой теплообменник используется?", "about_hx", "general", ["hx_type"], "пластинчат"],
   ["Есть ли на объекте сжатый воздух?", "air_available", "useful", ["air_pressure"], "воздух"],
-  ["Какие параметры нужно контролировать?", "purpose_goal", "useful", ["purpose_goal"], "температур|давлен"],
+  ["Какие параметры нужно контролировать?", "hmi_main", "useful", ["hmi_temp", "hmi_press_in", "hmi_press_out"], "температур|давлен"],
   ["Какую температуру воды надо поддерживать?", "temp_setpoint", "useful", ["temp_setpoint"], "60"],
   ["Какая температура поступающей воды зимой?", "temp_inlet_winter", "useful", ["temp_inlet_winter"], "10"],
   ["А летом?", null, "clarify", [], "."],
@@ -53,7 +53,7 @@ const cases: [string, string | null, EngineReply['quality'], string[], string][]
   ["Какую марку датчиков рекомендуете?", "unk_sensor_vendor", "unknown_found", ["unk_sensor_vendor"], "марк|Марк|производител|знаю"],
   ["Какие кабели использовать?", "unk_cable_brand", "unknown_found", ["unk_cable_brand"], "кабел"],
   ["Кто должен выбрать оборудование?", null, "unknown_found", [], "согласуйте"],
-  ["Расскажите всё об установке", "general_all", "general", ["purpose_goal", "purpose_manual"], "температур|параметр"],
+  ["Расскажите всё об установке", "general_all", "general", ["obj_flow", "purpose_goal", "purpose_manual"], "температур|параметр"],
   ["Что по температуре?", null, "clarify", [], "температур|Температур"],
   ["а по давлению?", null, "clarify", [], "давление|Давление"],
   ["какие режими работы есть щас", "purpose_current", "useful", ["purpose_manual"], "вручную|руками|оператор"],
@@ -94,7 +94,7 @@ for (const [name, target] of [['базовый', scenario], ['JSON', loaded]] as
       const replies = talk(target, cases.map(([q]) => q));
       for (const [index, reply] of replies.entries()) {
         const [question, id, , facts] = cases[index];
-        if ([23, 24, 29, 45].includes(index)) continue; // явные контекстные уточнения проверены ниже
+        if ([23, 24, 29, 35, 45].includes(index)) continue; // явные контекстные уточнения проверены ниже
         expect(reply.intentId, question).toBe(id);
         expect(reply.factIds, question).toEqual(facts);
         if (id && cases.findIndex(c => c[1] === id) === index) expect(reply.quality, question).not.toBe('repeat');
@@ -102,7 +102,8 @@ for (const [name, target] of [['базовый', scenario], ['JSON', loaded]] as
       expect(replies[23].factIds).toEqual(['temp_inlet_summer']);
       expect(replies[24].factIds).toEqual(['temp_tolerance']);
       expect(replies[29].factIds).toEqual(['press_out_setpoint']);
-      expect(replies[35].factIds).toEqual(['hmi_temp', 'hmi_press_in', 'hmi_press_out']);
+      // Первый шаг экрана оператора уже прозвучал в ответе на «Какие параметры нужно контролировать?» — дальше следующий.
+      expect(replies[35].factIds).toEqual(['hmi_flow', 'hmi_pump_state', 'hmi_pump_alarm']);
     });
     it.each([
       [['Какая температура входной воды зимой?', 'А летом?'], 'temp_inlet_summer', ['temp_inlet_summer']],
@@ -201,5 +202,6 @@ it.each(['learning', 'standard', 'strict'] as const)('бессмыслица с 
   expect(result.reply.quality).toBe('unrecognized');
   expect(result.state.disclosed).toEqual(previous.disclosed);
   expect(result.state.pending).toBeNull();
-  expect(result.reply.text.includes('«')).toBe(difficulty !== 'strict');
+  // Заказчик не уводит в «случайную» неизученную тему: студент мог спрашивать ровно о ней.
+  expect(result.reply.text.includes('«')).toBe(false);
 });

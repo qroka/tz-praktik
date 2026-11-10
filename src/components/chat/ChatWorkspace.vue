@@ -17,6 +17,7 @@ const { attempt, scenario, readOnly, hiddenId, highlightId, visibleMessages, sum
 const text = ref('');
 const replyToId = ref<string | null>(null);
 const captureId = ref<string | null>(null);
+const captureClarify = ref(false);
 const rateId = ref<string | null>(null);
 const rateRating = ref<'like' | 'dislike'>('like');
 const registryOpen = ref(false);
@@ -29,12 +30,21 @@ const replyTarget = computed(() => (replyToId.value ? attempt.value?.messages.fi
 const captureMessage = computed(() => (captureId.value ? attempt.value?.messages.find((message) => message.id === captureId.value) : undefined));
 const captureOpen = computed({ get: () => captureId.value !== null, set: (open) => !open && (captureId.value = null) });
 
-// Категория подсказывается по раскрытому факту; студент может выбрать другую.
+// Категория подсказывается по раскрытому факту (или теме неизвестного); студент может выбрать другую.
 const captureInitial = computed<RequirementDraft>(() => {
   const message = captureMessage.value;
   const fact = message?.factIds?.[0] ? factById(scenario, message.factIds[0]) : undefined;
+  if (captureClarify.value) {
+    const label = message?.uncertainty?.label;
+    return { text: label ? `Уточнить: ${label.toLowerCase()}` : `Уточнить: ${message?.text ?? ''}`, category: fact?.category ?? message?.uncertainty?.category ?? '', needsClarification: true };
+  }
   return { text: message?.text ?? '', category: fact?.category ?? '', needsClarification: false };
 });
+
+function startCapture(messageId: string, clarify: boolean) {
+  captureClarify.value = clarify;
+  captureId.value = messageId;
+}
 
 const rateMessage = computed(() => (rateId.value ? attempt.value?.messages.find((message) => message.id === rateId.value) : undefined));
 const rateOpen = computed({ get: () => rateId.value !== null, set: (open) => !open && (rateId.value = null) });
@@ -170,7 +180,7 @@ function saveRequirement(draft: RequirementDraft) {
           :customer-initials="scenario.customer.initials"
           :can-rate="Boolean(questionBefore(message.id))"
           @rate="(rating) => startRate(message.id, rating)"
-          @capture="captureId = message.id"
+          @capture="(clarify: boolean) => startCapture(message.id, clarify)"
           @clarify="startClarify(message.id)"
           @repeat="repeat(message.text)"
         />
@@ -186,7 +196,7 @@ function saveRequirement(draft: RequirementDraft) {
 
     <RequirementForm
       v-model:open="captureOpen"
-      title="Сохранить как требование"
+      :title="captureClarify ? 'Отметить вопрос для уточнения' : 'Сохранить как требование'"
       :initial="captureInitial"
       submit-label="Сохранить в реестр"
       hint="Перепишите слова заказчика как требование: параметр, значение, единица, условие."

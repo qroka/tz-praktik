@@ -111,9 +111,9 @@ function onFile(event: Event) {
       <div v-if="summary && !attempt?.finishedAt && !collapsed" class="mt-auto space-y-2 rounded-lg border border-default bg-elevated/50 p-3">
         <p class="text-sm font-semibold">До следующего этапа</p>
         <p class="text-xs text-muted">
-          {{ summary.remaining > 0 ? `Осталось изучить ${summary.remaining} ${summary.remaining === 1 ? 'тему' : summary.remaining < 5 ? 'темы' : 'тем'}` : 'Все темы затронуты, переходите к ТЗ' }}
+          {{ summary.remaining > 0 ? `Не начато ${summary.remaining} ${summary.remaining === 1 ? 'направление' : summary.remaining < 5 ? 'направления' : 'направлений'}` : 'Все направления затронуты' }} · обязательные сведения: {{ summary.coveragePercent }}%
         </p>
-        <UProgress :model-value="summary.coveragePercent" size="sm" aria-label="Охват направлений" />
+        <UProgress :model-value="summary.coveragePercent" size="sm" aria-label="Доля выясненных обязательных сведений" />
       </div>
     </template>
 

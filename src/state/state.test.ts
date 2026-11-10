@@ -184,7 +184,7 @@ describe('Расчёт результата', () => {
   });
 
   it('штрафует постоянные общие вопросы', () => {
-    const attempt = dialog(fresh(), ['Расскажите всё про установку', 'Расскажите про температуру', 'Расскажите про расход', 'Расскажите про насос', 'Расскажите про теплоноситель']);
+    const attempt = dialog(fresh(), ['Расскажите всё про установку', 'Расскажите про температуру', 'Расскажите про расход', 'Расскажите про интерфейс оператора', 'Что по безопасности?']);
     const result = evaluateAttempt(attempt, scenario);
     expect(result.penalties.some((item) => item.id === 'general')).toBe(true);
     expect(result.generalQuestions.length).toBeGreaterThanOrEqual(4);

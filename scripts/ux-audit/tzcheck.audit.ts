@@ -18,12 +18,14 @@ function found(text: string, factId: string): boolean {
   return fact.aliases.some((alias) => alias.split('+').every((part) => text.includes(norm(part))));
 }
 
+const AUDIT_DIR = process.env.AUDIT_DIR ?? 'docs/ux-audit';
+
 it('сверка ТЗ', () => {
   const md: string[] = ['# Сверка черновиков ТЗ с эталоном (автоматическая, грубая)', ''];
   const out: Record<string, unknown> = {};
   for (const key of ['ivan', 'weak', 'strong']) {
-    const file = `docs/ux-audit/tz-${key}.md`;
-    const log = `docs/ux-audit/logs/${key}.jsonl`;
+    const file = `${AUDIT_DIR}/tz-${key}.md`;
+    const log = `${AUDIT_DIR}/logs/${key}.jsonl`;
     if (!existsSync(file) || !existsSync(log)) continue;
     const text = norm(readFileSync(file, 'utf8'));
     const disclosed = new Set(readFileSync(log, 'utf8').trim().split('\n').flatMap((l) => JSON.parse(l).newFacts as string[]));
@@ -44,6 +46,6 @@ it('сверка ТЗ', () => {
     md.push(`Получены в переписке, но в ТЗ не найдены (${forgotten.length}): ${forgotten.map((f) => f.label).join('; ') || '—'}`, '');
     md.push(`Не получены в переписке вовсе: ${neverGot.length}`, '');
   }
-  writeFileSync('docs/ux-audit/tz-check.json', JSON.stringify(out, null, 2));
-  writeFileSync('docs/ux-audit/tz-check.md', md.join('\n'));
+  writeFileSync(`${AUDIT_DIR}/tz-check.json`, JSON.stringify(out, null, 2));
+  writeFileSync(`${AUDIT_DIR}/tz-check.md`, md.join('\n'));
 });

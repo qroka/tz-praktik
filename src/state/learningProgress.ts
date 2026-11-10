@@ -4,15 +4,24 @@ import { categoryProgress, type CategoryProgress } from '../engine/factTracker';
 import type { Attempt, ChatMessage, Scenario } from '../types';
 
 export type CategoryStatus = 'none' | 'partial' | 'done';
-export type DirectionRow = CategoryProgress & { status: CategoryStatus };
+/**
+ * Направление в прогрессе. found/total — все сведения темы (для преподавателя и итогов),
+ * mandatoryFound/mandatoryTotal — обязательные сведения, по ним считается статус.
+ */
+export type DirectionRow = CategoryProgress & { status: CategoryStatus; mandatoryFound: number; mandatoryTotal: number; percent: number };
 
 export type ProgressSummary = {
   rows: DirectionRow[];
+  /** Затронуто направлений: по которым известно хотя бы одно сведение. */
   explored: number;
   all: number;
   remaining: number;
-  /** Доля исследованных направлений (found > 0), а не итоговая оценка. */
+  /** Обязательные сведения: доля выясненных (главный показатель «изучено»). */
   coveragePercent: number;
+  mandatoryFound: number;
+  mandatoryTotal: number;
+  /** Доля затронутых направлений — отдельный показатель, не полнота. */
+  touchedPercent: number;
   questions: number;
   requirements: number;
   needsClarification: number;
@@ -21,21 +30,40 @@ export type ProgressSummary = {
   totalSections: number;
 };
 
+/**
+ * Статус темы: «выяснено» — только когда получены все её обязательные сведения;
+ * тема без обязательных сведений выяснена, когда получены все её сведения.
+ */
+export function directionStatus(row: { found: number; total: number; mandatoryFound: number; mandatoryTotal: number }): CategoryStatus {
+  if (row.found === 0) return 'none';
+  const complete = row.mandatoryTotal > 0 ? row.mandatoryFound === row.mandatoryTotal : row.total > 0 && row.found === row.total;
+  return complete ? 'done' : 'partial';
+}
+
 export const countWords = (text: string): number => text.trim().split(/\s+/).filter(Boolean).length;
 
 export function summarizeProgress(scenario: Scenario, attempt: Attempt, disclosed: string[]): ProgressSummary {
-  const rows: DirectionRow[] = categoryProgress(scenario, disclosed).map((row) => ({
-    ...row,
-    status: row.found === 0 ? 'none' : row.total > 0 && row.found === row.total ? 'done' : 'partial',
-  }));
+  const known = new Set(disclosed);
+  const rows: DirectionRow[] = categoryProgress(scenario, disclosed).map((row) => {
+    const mandatory = scenario.facts.filter((fact) => fact.category === row.id && fact.requirementType === 'mandatory');
+    const mandatoryFound = mandatory.filter((fact) => known.has(fact.id)).length;
+    const base = { ...row, mandatoryFound, mandatoryTotal: mandatory.length };
+    const share = mandatory.length ? mandatoryFound / mandatory.length : row.total ? row.found / row.total : 0;
+    return { ...base, status: directionStatus(base), percent: Math.round(share * 100) };
+  });
   const explored = rows.filter((row) => row.found > 0).length;
   const all = rows.length;
+  const mandatoryTotal = rows.reduce((sum, row) => sum + row.mandatoryTotal, 0);
+  const mandatoryFound = rows.reduce((sum, row) => sum + row.mandatoryFound, 0);
   return {
     rows,
     explored,
     all,
     remaining: all - explored,
-    coveragePercent: all === 0 ? 0 : Math.round((explored / all) * 100),
+    coveragePercent: mandatoryTotal === 0 ? 0 : Math.round((mandatoryFound / mandatoryTotal) * 100),
+    mandatoryFound,
+    mandatoryTotal,
+    touchedPercent: all === 0 ? 0 : Math.round((explored / all) * 100),
     questions: attempt.messages.filter((message) => message.role === 'student').length,
     requirements: attempt.requirements.length,
     needsClarification: attempt.requirements.filter((item) => item.needsClarification).length,
@@ -79,7 +107,7 @@ export function buildHint(scenario: Scenario, attempt: Attempt, rows: DirectionR
     return { title: 'Зафиксируйте результат', text: `Вы получили сведения по теме «${row.title}». Решите, что из них требование, и сохраните его в реестре.` };
   }
   if (row) {
-    const done = row.status === 'done' ? ' Эта тема исследована полностью.' : '';
+    const done = row.status === 'done' ? ' Обязательные сведения этой темы выяснены.' : '';
     return {
       title: 'Идёте верно',
       text: `Вы выяснили сведения по теме «${row.title}».${done} Подумайте, что из этого зависит от режима работы и как система должна действовать при отклонении.`,

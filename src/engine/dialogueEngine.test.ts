@@ -298,10 +298,15 @@ describe('Режимы сложности и seed', () => {
     const b = mulberry32(5);
     expect([a(), a(), a()]).toEqual([b(), b(), b()]);
   });
-  it('на непонятный вопрос заказчик сам подсказывает тему, в строгом режиме нет', () => {
-    expect(ask('Абракадабра', 'learning').reply.text).toContain('«');
-    expect(ask('Абракадабра', 'standard').reply.text).toContain('«');
+  it('на непонятный вопрос заказчик не уводит в случайную тему, в строгом режиме короче', () => {
+    expect(ask('Абракадабра', 'learning').reply.text).not.toContain('«');
+    expect(ask('Абракадабра', 'standard').reply.text).not.toContain('«');
     expect(ask('Абракадабра', 'strict').reply.text.length).toBeLessThan(40);
+  });
+  it('непонятый вопрос с предметом — одно уточнение по этому предмету, после двух подряд — как спросить', () => {
+    const turns = talk(['Что там с электропитанием по вашему мнению вообще?', 'А с электрикой как у вас обстоит ситуация?']);
+    expect(turns[0].reply.text).not.toMatch(/мы ещё не говорили|посмотрите в сторону/);
+    expect(new Set(turns.map((t) => t.reply.text)).size).toBe(2);
   });
   it('строгий режим задаёт более короткий встречный вопрос', () => {
     expect(ask('Какое давление?', 'strict').reply.text.length).toBeLessThan(ask('Какое давление?', 'standard').reply.text.length);

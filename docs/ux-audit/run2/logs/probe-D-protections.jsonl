@@ -1,0 +1,4 @@
+{"n":1,"question":"Какие нужны защиты?","reply":"Какую аварию вы имеете в виду: по температуре, по давлению или по отсутствию расхода?","quality":"clarify","intentId":null,"factIds":[],"newFacts":[],"ms":1696}
+{"n":2,"question":"А при перегреве что?","reply":"При 75 градусах нагрев обязательно надо прекращать.","quality":"useful","intentId":"temp_alarm","factIds":["temp_alarm"],"newFacts":["temp_alarm"],"ms":1233}
+{"n":3,"question":"А если воды нет?","reply":"Так я ответить не смогу. Что именно нужно узнать?","quality":"unrecognized","intentId":null,"factIds":[],"newFacts":[],"ms":1173}
+{"n":4,"question":"А по давлению?","reply":"Давление у нас в разных местах разное. Какое вас интересует: на входе насоса, на выходе, в контуре теплоносителя или сжатый воздух?","quality":"clarify","intentId":null,"factIds":[],"newFacts":[],"ms":1886}

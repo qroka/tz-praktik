@@ -12,7 +12,7 @@ const info: AccordionItem[] = [
     label: 'Как считается прогресс',
     icon: 'i-lucide-calculator',
     content:
-      'Показатель «изучено» — доля тем, по которым вы уже получили хотя бы одно сведение. Это не итоговая оценка и не качество ТЗ. Тема отмечается «Готово», когда выяснены все её сведения.',
+      'Показатель «изучено» — доля обязательных сведений об объекте, которые вы уже выяснили у заказчика. «Затронуто» — сколько направлений вы начали. Направление «Выяснено», когда получены все его обязательные сведения; «Частично» — когда часть. Это прогресс переписки, а не итоговая оценка и не качество ТЗ: реестр и разделы ТЗ считаются отдельно.',
   },
 ];
 </script>
@@ -24,9 +24,9 @@ const info: AccordionItem[] = [
 
     <dl class="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
       <div class="rounded-lg bg-elevated p-4">
-        <dt class="text-xs text-muted">Темы исследованы</dt>
+        <dt class="text-xs text-muted">Обязательные сведения</dt>
         <dd class="text-2xl font-bold">{{ summary.coveragePercent }}%</dd>
-        <dd class="text-xs text-muted">{{ summary.explored }} из {{ summary.all }}</dd>
+        <dd class="text-xs text-muted">затронуто направлений: {{ summary.explored }} из {{ summary.all }}</dd>
       </div>
       <div class="rounded-lg bg-elevated p-4">
         <dt class="text-xs text-muted">Вопросов задано</dt>

@@ -3,6 +3,7 @@ import type { Category, Scenario, TzSection } from '../types';
 import { facts } from './facts';
 import { ambiguities, attributeConcepts, conceptCombos, conceptSuppress, intents, lexicon, subjectConcepts, topics } from './intents';
 import { aspectReplies, meta, replies } from './responses';
+import { glossary, specGroups, unknownTopics } from './topicBlocks';
 
 export const categories: Category[] = [
   { id: 'purpose', title: 'Назначение и цели', direction: 'Зачем заказчику система и что не устраивает сейчас.' },
@@ -43,7 +44,8 @@ export const scenario: Scenario = {
   publicBrief:
     'Завод хочет автоматизировать узел приготовления горячей воды для моечной линии. Подробности знает главный механик. Выясните у него всё необходимое и составьте техническое задание.',
   customer: { name: 'Виктор Андреевич', role: 'главный механик, заказчик', initials: 'ВА' },
-  estimatedMinutes: 60,
+  // Всё занятие (пара): переписка и составление ТЗ.
+  estimatedMinutes: 90,
   greeting: [
     'Здравствуйте. Мне сказали, что вы готовите техническое задание по нашему узлу горячей воды. Спрашивайте, отвечу, что знаю.',
     'Добрый день. Я отвечаю за моечную линию, по ней нужно ТЗ на автоматику. Что вас интересует?',
@@ -63,4 +65,7 @@ export const scenario: Scenario = {
   ambiguities,
   topics,
   aspectReplies,
+  specGroups,
+  unknownTopics,
+  glossary,
 };

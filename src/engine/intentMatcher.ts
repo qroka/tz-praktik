@@ -190,7 +190,11 @@ export function contextConcepts(analysis: Analysis, ctx: MatchContext, scenario:
   // Спорное понятие в подходящей теме («а максимальное давление?» после теплоносителя) тоже берёт контекст темы.
   const resolvedByTopic = scenario.ambiguities.some(
     (ambiguity) =>
-      ctx.topic && ambiguity.contextTopics.includes(ctx.topic) && ambiguity.trigger.some((concept) => analysis.concepts.has(concept)),
+      ctx.topic &&
+      ambiguity.contextTopics.includes(ctx.topic) &&
+      // Тема разрешает только спорный предмет («а максимальное давление?» о теплоносителе);
+      // признак («авария») при явно названном другом предмете («а по давлению?») тему не переносит.
+      ambiguity.trigger.some((concept) => analysis.concepts.has(concept) && (scenario.subjectConcepts.includes(concept) || !hasSubject)),
   );
   if ((!hasSubject || resolvedByTopic) && ctx.topic) {
     for (const concept of scenario.topics[ctx.topic]?.concepts ?? []) carried.add(concept);
@@ -202,9 +206,11 @@ export function contextConcepts(analysis: Analysis, ctx: MatchContext, scenario:
   // «А по давлению после насоса?» после вопроса об аварии: новый предмет, но признак «авария» остаётся.
   const switchesSubject = ELLIPSIS_START.has(analysis.tokens[0]);
   if ((!hasSubject || switchesSubject) && !hasAttribute && elliptical && analysis.tokens.length <= 6) {
-    for (const concept of ctx.lastAttributes) carried.add(concept);
+    // Вопрос о значении («а сколько градусов?») не наследует «что делать»: это уже другой вопрос.
+    for (const concept of ctx.lastAttributes) if (!(concept === 'reaction' && analysis.concepts.has('howmuch'))) carried.add(concept);
   }
-  for (const [a, b] of [['beforePump', 'afterPump'], ['beforeAny', 'afterAny'], ['winter', 'summer']]) {
+  // Новая точка измерения отменяет унаследованную противоположную: «Какое давление до насоса?» → «А после?».
+  for (const [a, b] of [['beforePump', 'afterPump'], ['beforeAny', 'afterAny'], ['beforePump', 'afterAny'], ['afterPump', 'beforeAny'], ['winter', 'summer']]) {
     if (analysis.concepts.has(a)) carried.delete(b);
     if (analysis.concepts.has(b)) carried.delete(a);
   }

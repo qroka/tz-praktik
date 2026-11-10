@@ -138,6 +138,14 @@ export type MetaReplies = {
   repeatLast: string[];
   /** Вопрос из одного слова-уточнения («А летом?») без предмета в контексте. */
   needSubject: string[];
+  /** Непонятый вопрос с распознанным предметом: один уточняющий вопрос по предмету. */
+  fallbackSubject?: string[];
+  /** После двух непонятых вопросов подряд: как спросить, без готового ответа. */
+  fallbackGuide?: string[];
+  /** Паспортный блок не исчерпан: можно спросить ещё. */
+  specMore?: string[];
+  /** Ответное приветствие, когда студент поздоровался и сразу задал вопрос. */
+  greetBack?: string[];
 };
 
 export type Scenario = {
@@ -165,7 +173,58 @@ export type Scenario = {
   topics: Record<string, TopicContext>;
   /** Ответы на разные стороны одного намерения: намерение → аспект вопроса → варианты. */
   aspectReplies?: Record<string, Record<string, string[]>>;
+  /** Паспортные блоки: связанные сведения одного устройства в одном ответе. */
+  specGroups?: SpecGroup[];
+  /** Темы без подтверждённых сведений: честное «не уточнено / не определено / решает исполнитель». */
+  unknownTopics?: UnknownTopic[];
+  /** Пояснения терминов без значений. */
+  glossary?: GlossaryEntry[];
 };
+
+/** Сведение паспортного блока: факт, ответ, которым его произносит заказчик, и слова, которыми о нём спрашивают. */
+export type SpecItem = { factId: string; intentId: string; cues: string[] };
+
+export type SpecGroup = {
+  id: string;
+  title: string;
+  /** Общее намерение темы («Расскажите про насос»), от имени которого идёт ответ. */
+  intentId: string;
+  /** Понятия-предметы, по которым узнаётся группа. */
+  subjects: string[];
+  /** Темы разговора, в которых короткий вопрос («А какие у него характеристики?») относится к группе. */
+  topics: string[];
+  items: SpecItem[];
+};
+
+/** Почему сведений нет: обследовать объект, согласовать с заказчиком или решает исполнитель. */
+export type UncertaintyKind = 'survey' | 'undefined' | 'designer';
+
+/** Честное «сведений нет» в ответе: тема, класс и категория для реестра. Это не факт и не начисляет прогресс. */
+export type Uncertainty = { id: string; kind: UncertaintyKind; label: string; category?: string };
+
+export type UnknownTopic = {
+  id: string;
+  kind: UncertaintyKind;
+  label: string;
+  /** Категория реестра, в которую студент отметит вопрос как требующий уточнения. */
+  category: string;
+  /** Регулярное выражение по нормализованному тексту. */
+  pattern?: string;
+  /** Группы понятий: в вопросе должно быть хотя бы одно понятие из каждой. */
+  concepts?: string[][];
+  /** Не срабатывает при этих понятиях («пропал сигнал датчика давления» — это отказ датчика). */
+  excludeConcepts?: string[];
+  /** Темы ответа по фактам, к которому оговорка дописывается; без них оговорка заменяет ответ. */
+  appendTo?: string[];
+  /** Шаблон короткого уточнения, действующий только в этих темах разговора. */
+  contextPattern?: string;
+  contextTopics?: string[];
+  /** Не срабатывает, если вопрос о будущей системе («нужен ли частотник?»). */
+  requiresNotFuture?: boolean;
+  replies: string[];
+};
+
+export type GlossaryEntry = { id: string; pattern: string; text: string };
 
 // --- Состояние движка ---
 
@@ -206,13 +265,29 @@ export type EngineState = {
   usedVariants: Record<string, number[]>;
   /** Какие именно формулировки уже задавались по каждому намерению (для настоящих повторов). */
   askedTexts?: Record<string, string[]>;
+  /** Последний паспортный блок: «А ещё?» продолжает его. */
+  lastSpec?: string | null;
+  /** Сколько непонятых вопросов подряд: после двух заказчик подсказывает, как спросить. */
+  missStreak?: number;
+  /** Темы, по которым заказчик честно сказал, что сведений нет (для реестра и оценки, не факты). */
+  uncertain?: string[];
   /** Терпение заказчика: падает от общих и повторных вопросов. */
   patience: number;
   counters: EngineCounters;
 };
 
+/** Диагностика ответа для преподавателя и тестов: не подсказка студенту. */
+export type ReplyDiagnostic = {
+  reason: string;
+  score: number | null;
+  /** Смысловая рамка вопроса: время, действие, предметы, признаки, вежливый префикс. */
+  frame?: { time: 'current' | 'future' | 'unspecified'; action: string; subjects: string[]; attributes: string[]; prefix: string | null };
+};
+
 export type EngineReply = {
-  diagnostic?: { reason: string; score: number | null };
+  diagnostic?: ReplyDiagnostic;
+  /** Заказчик честно сказал, что сведений нет: тема и класс неизвестности. */
+  uncertainty?: Uncertainty | null;
   text: string;
   intentId: string | null;
   topic: string | null;
@@ -238,6 +313,10 @@ export type ChatMessage = {
   replyToId?: string;
   /** Только у ответов заказчика. */
   feedback?: AnswerFeedback;
+  /** У ответа заказчика: сведений нет, вопрос можно отметить в реестре как требующий уточнения. */
+  uncertainty?: Uncertainty;
+  /** У ответа заказчика: как понят вопрос (только для режима преподавателя, студенту не показывается). */
+  diagnostic?: ReplyDiagnostic;
 };
 
 export type Requirement = {

@@ -7,7 +7,9 @@ import { scenario } from '../../src/data/scenario';
 
 type Entry = { n: number; question: string; reply: string; quality: string; intentId: string | null; factIds: string[]; newFacts: string[] };
 
-const LOGS = 'docs/ux-audit/logs';
+// AUDIT_DIR — каталог прогона: в нём logs/*.jsonl, туда же пишутся metrics.*
+const AUDIT_DIR = process.env.AUDIT_DIR ?? 'docs/ux-audit';
+const LOGS = `${AUDIT_DIR}/logs`;
 const PERSONAS = [
   ['ivan', 'Иван (средняя подготовка)'],
   ['weak', 'Студент А (слабая)'],
@@ -129,6 +131,6 @@ it('метрики UX-аудита', () => {
     }
     md.push('');
   }
-  writeFileSync('docs/ux-audit/metrics.json', JSON.stringify(out, null, 2));
-  writeFileSync('docs/ux-audit/metrics.md', md.join('\n'));
+  writeFileSync(`${AUDIT_DIR}/metrics.json`, JSON.stringify(out, null, 2));
+  writeFileSync(`${AUDIT_DIR}/metrics.md`, md.join('\n'));
 });

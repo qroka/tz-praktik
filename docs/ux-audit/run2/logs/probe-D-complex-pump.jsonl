@@ -1,0 +1,1 @@
+{"n":1,"question":"Что по насосу: мощность, подача, напор?","reply":"Мощность двигателя 2,2 кВт, так на табличке. Номинальная подача около 5 кубов в час. Напор около 32 метров.","quality":"useful","intentId":"about_pump","factIds":["pump_power","pump_nominal","pump_head"],"newFacts":["pump_power","pump_nominal","pump_head"],"ms":1912}

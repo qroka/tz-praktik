@@ -1,0 +1,35 @@
+{
+  "ivan": {
+    "numericTotal": 39,
+    "numericGot": 23,
+    "numericGotInTz": 23,
+    "mandatoryTotal": 86,
+    "inTz": 70,
+    "forgotten": [],
+    "neverGot": 36,
+    "markedUnknown": 16,
+    "proposals": 10
+  },
+  "weak": {
+    "numericTotal": 39,
+    "numericGot": 19,
+    "numericGotInTz": 19,
+    "mandatoryTotal": 86,
+    "inTz": 65,
+    "forgotten": [],
+    "neverGot": 41,
+    "markedUnknown": 9,
+    "proposals": 12
+  },
+  "strong": {
+    "numericTotal": 39,
+    "numericGot": 19,
+    "numericGotInTz": 19,
+    "mandatoryTotal": 86,
+    "inTz": 68,
+    "forgotten": [],
+    "neverGot": 41,
+    "markedUnknown": 15,
+    "proposals": 14
+  }
+}
