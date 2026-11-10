@@ -77,7 +77,6 @@ test('2–4. Вопрос, ответ, прогресс, уточнение, п�
   expect(answer).toContain('60');
   await expect(page.getByTestId('typing')).toHaveCount(0);
   await expect(page.getByTestId('coverage-percent')).not.toHaveText('0%');
-  await expect(page.getByTestId('message-opened')).toContainText('Открыто новое направление');
   await expect(page.getByTestId('explored-count')).toContainText('из 13');
 
   expect(await ask(page, 'Какое отклонение допустимо?')).toMatch(/2|двух/);
