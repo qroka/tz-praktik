@@ -45,7 +45,7 @@ function move() {
         :description="attempt?.requirements.length ? 'Включите показ всех категорий или пишите текст сами.' : 'Вернитесь к диалогу и сохраните ответы заказчика как требования.'"
       />
     </div>
-    <UCheckboxGroup v-else v-model="picked" :items="items" variant="card" class="scroll-y min-h-0 flex-1" />
+    <UCheckboxGroup v-else v-model="picked" :items="items" variant="card" class="overflow-y-auto min-h-0 flex-1" />
     <UButton block icon="i-lucide-list-plus" :disabled="picked.length === 0" :label="`Перенести в раздел ${sectionId}${picked.length ? `: ${picked.length}` : ''}`" @click="move" />
   </div>
 </template>

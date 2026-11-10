@@ -41,11 +41,11 @@ for (const [width, height] of SIZES) {
   const hasOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
   if (hasOverflow) problems.push(`${width}: горизонтальная прокрутка на экране диалога`);
 
-  const screens = width < 860
-    ? [['tab', /^Реестр/, 'registry'], ['tab', /^ТЗ/, 'tz'], ['tab', /^Прогресс/, 'progress']]
-    : [['button', /Реестр требований/, 'registry'], ['button', /Редактор ТЗ/, 'tz'], ['button', /Мой прогресс/, 'progress']];
-  for (const [role, label, name] of screens) {
-    await page.getByRole(role, { name: label }).first().click();
+  const screens = [[/Реестр требований/, 'registry'], [/Редактор ТЗ/, 'tz'], [/Мой прогресс/, 'progress']];
+  for (const [label, name] of screens) {
+    // Уже 1024 px боковая панель выезжает по кнопке меню.
+    if (width < 1024) await page.getByRole('button', { name: 'Меню', exact: true }).click();
+    await page.getByRole('button', { name: label }).first().click();
     await page.waitForTimeout(250);
     await shot(name);
     if (await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)) problems.push(`${width}: горизонтальная прокрутка на экране «${name}»`);

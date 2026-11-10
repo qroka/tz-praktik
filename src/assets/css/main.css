@@ -1,106 +1,42 @@
-@import "tailwindcss";
+/* Все палитры доступны, чтобы тему можно было сменить без пересборки. */
+@import "tailwindcss" theme(static);
 @import "@nuxt/ui";
 
-/* Тёмная тема — единственная. Токены взяты из утверждённого референса. */
-:root {
-  --app-bg: #0f161f;
-  --surface: #1d2832;
-  --surface-raised: #26323d;
-  --surface-active: #23493f;
-  --border-subtle: #36434e;
-  --accent: #61d8b7;
-  --text-primary: #f2f7f8;
-  --text-secondary: #afc3cb;
-  --text-muted: #8ea5b1;
-  --warn: #f2b84b;
-  --danger: #f08a8a;
-  --radius-panel: 18px;
-  --motion: 160ms;
-  color-scheme: dark;
+/* Цвета, скругление и поверхности задаёт только тема (src/theme/themes.ts) через токены Nuxt UI. */
+@theme static {
+  --font-sans: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
 }
 
-:root,
-:root.dark {
-  --ui-bg: var(--app-bg);
-  --ui-bg-muted: var(--surface);
-  --ui-bg-elevated: var(--surface-raised);
-  --ui-bg-accented: #33414d;
-  --ui-border: var(--border-subtle);
-  --ui-border-muted: #2c3843;
-  --ui-border-accented: #4a5a67;
-  --ui-text: var(--text-primary);
-  --ui-text-highlighted: #ffffff;
-  --ui-text-toned: var(--text-secondary);
-  --ui-text-muted: var(--text-secondary);
-  --ui-text-dimmed: var(--text-muted);
-  --ui-primary: var(--accent);
-  --ui-text-inverted: #0f161f;
-  --ui-bg-inverted: var(--accent);
-  --ui-radius: 0.75rem;
-}
-
-html,
-body,
-#app {
-  height: 100%;
+html {
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
-  background: var(--app-bg);
-  color: var(--text-primary);
   font-size: 15px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
 
-.panel {
-  background: var(--surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-panel);
-}
-
-.section-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-/* Область прокрутки с аккуратной полосой. */
-.scroll-y {
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-subtle) transparent;
-}
-
-/* Пузыри сообщений. */
 .bubble {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-.msg-enter-active {
-  transition: opacity var(--motion) ease, transform var(--motion) ease;
+.msg-enter-active,
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 160ms ease, transform 160ms ease;
 }
 .msg-enter-from {
   opacity: 0;
   transform: translateY(6px);
 }
-
-.msg-highlight [data-slot='content'] {
-  box-shadow: 0 0 0 2px var(--accent);
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity var(--motion) ease;
-}
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+.msg-highlight [data-slot='content'] {
+  box-shadow: 0 0 0 2px var(--ui-primary);
 }
 
 .typing-dots i {
@@ -109,7 +45,7 @@ body {
   height: 6px;
   margin-right: 3px;
   border-radius: 50%;
-  background: var(--text-secondary);
+  background: var(--ui-text-muted);
   animation: typing 1s infinite ease-in-out;
 }
 .typing-dots i:nth-child(2) {
@@ -144,28 +80,25 @@ body {
   }
 }
 
-/* Печать: светлая контрастная версия итогового отчёта. */
+/* Печать: светлая контрастная версия независимо от темы экрана. */
 @media print {
   :root,
   :root.dark {
-    --app-bg: #ffffff;
-    --surface: #ffffff;
-    --surface-raised: #f3f4f6;
-    --border-subtle: #cfd4da;
-    --text-primary: #111111;
-    --text-secondary: #333333;
-    --text-muted: #555555;
-    --ui-bg: #ffffff;
+    --ui-bg: #fff;
+    --ui-bg-muted: #f3f4f6;
     --ui-bg-elevated: #f3f4f6;
     --ui-border: #cfd4da;
-    --ui-text: #111111;
-    --ui-text-muted: #333333;
-    --ui-text-dimmed: #555555;
+    --ui-text: #111;
+    --ui-text-toned: #333;
+    --ui-text-muted: #333;
+    --ui-text-dimmed: #555;
     color-scheme: light;
   }
   html,
   body,
-  #app {
+  #app,
+  .print-flow {
+    display: block !important;
     height: auto !important;
     overflow: visible !important;
     background: #fff !important;
@@ -173,14 +106,5 @@ body {
   }
   .no-print {
     display: none !important;
-  }
-  .print-flow {
-    display: block !important;
-    height: auto !important;
-    overflow: visible !important;
-  }
-  .panel {
-    border-color: #cfd4da;
-    break-inside: avoid;
   }
 }

@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { watch } from 'vue';
 import { useSession } from './composables/useSession';
+import { useTheme } from './composables/useTheme';
 import WelcomeScreen from './components/onboarding/WelcomeScreen.vue';
 import WorkspaceShell from './components/layout/WorkspaceShell.vue';
 
 const { attempt, notice } = useSession();
 const toast = useToast();
+useTheme().install();
 
 // Уведомления о реальных событиях: открыто направление, ошибка сохранения, загрузка файла.
 watch(notice, (value) => {

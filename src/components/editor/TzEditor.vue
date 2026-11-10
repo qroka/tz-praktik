@@ -47,10 +47,10 @@ async function move(ids: string[]) {
 </script>
 
 <template>
-  <div class="flex h-full min-h-0 gap-3">
-    <nav v-if="props.layout === 'wide'" class="panel scroll-y w-64 shrink-0 p-3" aria-label="Разделы технического задания">
+  <div class="flex h-full min-h-0 gap-3 p-3 sm:p-4">
+    <nav v-if="props.layout === 'wide'" class="rounded-lg border border-default bg-default overflow-y-auto w-64 shrink-0 p-3" aria-label="Разделы технического задания">
       <div class="flex items-center justify-between px-2 pb-2">
-        <span class="section-label">Разделы ТЗ</span>
+        <span class="text-xs font-semibold tracking-wide text-dimmed uppercase">Разделы ТЗ</span>
         <span class="text-xs text-muted" data-testid="tz-filled">{{ filled }} из {{ total }}</span>
       </div>
       <ol class="space-y-1">
@@ -73,7 +73,7 @@ async function move(ids: string[]) {
       </ol>
     </nav>
 
-    <section class="panel flex min-h-0 min-w-0 flex-1 flex-col gap-4 p-4 sm:p-6" :aria-label="`Раздел ${section.id}`">
+    <section class="rounded-lg border border-default bg-default flex min-h-0 min-w-0 flex-1 flex-col gap-4 p-4 sm:p-6" :aria-label="`Раздел ${section.id}`">
       <div class="space-y-3">
         <div class="flex items-center justify-between gap-3">
           <p class="text-xs font-semibold tracking-wide text-primary uppercase">Раздел {{ section.id }} из {{ total }}</p>

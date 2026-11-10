@@ -12,7 +12,7 @@ const steps = [
 
 <template>
   <div class="space-y-5">
-    <UCard :ui="{ root: 'panel ring-0 bg-[var(--surface)]', body: 'space-y-3 p-5' }" aria-label="Учебный кейс">
+    <UCard :ui="{ body: 'space-y-3 p-5' }" aria-label="Учебный кейс">
       <h2 class="text-xl font-semibold">{{ scenario.title }}</h2>
       <p class="text-toned">{{ scenario.subtitle }}</p>
       <p class="text-sm text-muted">{{ scenario.publicBrief }}</p>
@@ -24,8 +24,8 @@ const steps = [
       </div>
     </UCard>
     <ol class="grid gap-3 sm:grid-cols-3" aria-label="Порядок работы">
-      <li v-for="(step, index) in steps" :key="step.title" class="panel flex gap-3 p-4">
-        <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-[var(--surface-active)] text-primary">
+      <li v-for="(step, index) in steps" :key="step.title" class="rounded-lg border border-default bg-default flex gap-3 p-4">
+        <span class="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
           <UIcon :name="step.icon" class="size-5" />
         </span>
         <span>

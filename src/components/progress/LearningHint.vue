@@ -5,7 +5,7 @@ const { hint } = useSession();
 </script>
 
 <template>
-  <aside v-if="hint" class="shrink-0 rounded-2xl bg-[var(--surface-active)] p-4" aria-live="polite" data-testid="hint">
+  <aside v-if="hint" class="shrink-0 rounded-lg bg-primary/10 p-4" aria-live="polite" data-testid="hint">
     <p class="flex items-center gap-2 text-sm font-semibold text-primary">
       <UIcon name="i-lucide-sparkles" class="size-4" aria-hidden="true" />Подсказка: {{ hint.title }}
     </p>

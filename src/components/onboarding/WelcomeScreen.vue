@@ -27,7 +27,7 @@ function onFile(event: Event) {
   <main class="mx-auto flex min-h-dvh w-full max-w-6xl flex-col justify-center gap-6 px-4 py-8 sm:px-6 lg:flex-row lg:items-center lg:gap-10">
     <section class="flex-1 space-y-6">
       <div class="flex items-center gap-3">
-        <span class="grid size-11 place-items-center rounded-xl bg-primary text-lg font-bold text-inverted" aria-hidden="true">ТЗ</span>
+        <span class="grid size-11 place-items-center rounded-lg bg-primary text-lg font-bold text-inverted" aria-hidden="true">ТЗ</span>
         <h1 class="text-3xl font-bold tracking-tight">ТЗ Практикум</h1>
       </div>
       <p class="max-w-xl text-base text-toned">
@@ -37,7 +37,7 @@ function onFile(event: Event) {
       <CaseOverview :scenario="scenario" />
     </section>
 
-    <UCard class="w-full lg:max-w-md" :ui="{ root: 'panel ring-0 bg-[var(--surface)]', body: 'space-y-5 p-5 sm:p-6' }">
+    <UCard class="w-full lg:max-w-md" :ui="{ body: 'space-y-5 p-5 sm:p-6' }">
       <div class="flex items-center justify-between gap-3">
         <h2 class="text-lg font-semibold">Новая тренировка</h2>
         <UBadge color="primary" variant="subtle" icon="i-lucide-graduation-cap" label="Учебный режим" />

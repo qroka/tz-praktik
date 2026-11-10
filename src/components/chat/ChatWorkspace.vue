@@ -89,19 +89,19 @@ function saveRequirement(draft: RequirementDraft) {
 </script>
 
 <template>
-  <section class="panel flex h-full min-h-0 flex-col overflow-hidden" aria-label="Переписка с заказчиком">
-    <header class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--border-subtle)] px-4 py-3 sm:px-5 sm:py-4">
-      <div class="min-w-0 flex-1">
+  <section class="flex h-full min-h-0 flex-col overflow-hidden" aria-label="Переписка с заказчиком">
+    <header class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-default px-4 py-3 sm:px-5 sm:py-4">
+      <div class="hidden min-w-0 flex-1 sm:block">
         <h2 class="truncate text-lg font-semibold">Диалог с заказчиком</h2>
         <p class="truncate text-sm text-muted">{{ scenario.title }} · {{ scenario.customer.role }}</p>
       </div>
+      <span class="flex-1 sm:hidden" />
       <UBadge
         :color="readOnly ? 'neutral' : 'primary'"
         variant="subtle"
         size="lg"
         :label="readOnly ? 'Завершено' : 'В процессе'"
-        :ui="{ base: 'rounded-full' }"
-        data-testid="chat-status"
+                data-testid="chat-status"
       >
         <template #leading><span class="size-2 rounded-full bg-current" aria-hidden="true" /></template>
       </UBadge>
@@ -120,7 +120,7 @@ function saveRequirement(draft: RequirementDraft) {
       </div>
     </header>
 
-    <div ref="thread" class="scroll-y min-h-0 flex-1 px-3 py-4 sm:px-5" role="log" aria-live="polite" aria-relevant="additions" aria-label="Сообщения" tabindex="0">
+    <div ref="thread" class="overflow-y-auto min-h-0 flex-1 px-3 py-4 sm:px-5" role="log" aria-live="polite" aria-relevant="additions" aria-label="Сообщения" tabindex="0">
       <TransitionGroup name="msg" tag="div" class="mx-auto max-w-4xl">
         <ChatMessage
           v-for="message in visibleMessages"
@@ -143,7 +143,7 @@ function saveRequirement(draft: RequirementDraft) {
       </div>
     </div>
 
-    <div v-if="readOnly" class="shrink-0 border-t border-[var(--border-subtle)] px-5 py-4 text-sm text-muted">Попытка завершена. Переписка доступна для чтения.</div>
+    <div v-if="readOnly" class="shrink-0 border-t border-default px-5 py-4 text-sm text-muted">Попытка завершена. Переписка доступна для чтения.</div>
     <ChatComposer v-else ref="composer" v-model="text" :busy="typing" :reply-text="replyTarget?.text ?? null" :compact-layout="props.layout === 'compact'" @send="submit" @cancel-reply="replyToId = null" />
 
     <RequirementForm

@@ -29,6 +29,10 @@ npm run dev
 
 После `npm install` интернет не требуется. Папка `dist/` работает на любом статическом хостинге, в том числе из подкаталога по пути `/tz-praktik/` (`base` в `vite.config.ts`; маршрутизация hash-историей, серверный fallback не нужен).
 
+## Оформление
+
+Каркас на Dashboard-компонентах Nuxt UI (`UDashboardGroup`, `UDashboardSidebar`, `UDashboardPanel`, `UDashboardNavbar`), как в общем слое `@admsr/ui`. Свои цвета и скругления не заданы: всё берётся из токенов Nuxt UI. Тема (11 готовых) и режим светлый / тёмный переключаются в меню студента в левом нижнем углу, выбор хранится в `localStorage`. По умолчанию — тёмная тема emerald + slate.
+
 ## Что умеет сервис
 
 - **Старт.** Описание упражнения, кейс, время, число тем, имя студента. Режим один — учебный.
@@ -62,7 +66,8 @@ src/
     evaluationEngine.ts   Расчёт результата
   state/                  Попытка, localStorage, экспорт и импорт, learningProgress (прогресс и подсказки)
   components/             Vue-компоненты на Nuxt UI: layout, onboarding, chat, progress, requirements, editor, results
-  assets/css/main.css     Тёмные токены и переопределения Nuxt UI
+  theme/themes.ts         Готовые темы (палитры, радиус, токены) из общего слоя @admsr/ui
+  assets/css/main.css     Только подключение Nuxt UI, шрифт и печать; цвета и скругления — токены темы
 e2e/app.spec.ts           Сценарии Playwright
 scripts/screenshots.mjs   Визуальная проверка на всех ширинах
 docs/                     Список намерений, пример экспорта, скриншоты

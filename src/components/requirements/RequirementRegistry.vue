@@ -90,7 +90,7 @@ function onSource(messageId: string) {
 </script>
 
 <template>
-  <section :class="props.embedded ? 'flex flex-col gap-4' : 'panel flex h-full min-h-0 flex-col gap-4 p-4 sm:p-6'" aria-labelledby="registry-title">
+  <section :class="props.embedded ? 'flex flex-col gap-4' : 'flex h-full min-h-0 flex-col gap-4 p-4 sm:p-6'" aria-labelledby="registry-title">
     <div class="flex flex-wrap items-center gap-2">
       <h2 id="registry-title" class="mr-auto text-xl font-semibold">
         Реестр требований <UBadge color="neutral" variant="subtle" :label="String(items.length)" data-testid="registry-count" />
@@ -107,7 +107,7 @@ function onSource(messageId: string) {
       <UButton :color="onlyConflict ? 'primary' : 'neutral'" :variant="onlyConflict ? 'soft' : 'outline'" icon="i-lucide-triangle-alert" :label="`Противоречия: ${conflictCount}`" :aria-pressed="onlyConflict" @click="onlyConflict = !onlyConflict" />
     </div>
 
-    <div :class="props.embedded ? 'space-y-5' : 'scroll-y -mr-2 min-h-0 flex-1 space-y-5 pr-2'">
+    <div :class="props.embedded ? 'space-y-5' : 'overflow-y-auto -mr-2 min-h-0 flex-1 space-y-5 pr-2'">
       <div v-if="items.length === 0" data-testid="registry-empty">
         <UEmpty icon="i-lucide-clipboard-list" title="Пока нет требований" description="Сохраните важные сведения из ответов заказчика, чтобы использовать их при подготовке ТЗ." />
       </div>
@@ -133,7 +133,7 @@ function onSource(messageId: string) {
       </section>
     </div>
 
-    <div v-if="mergeMode" class="shrink-0 space-y-3 rounded-2xl bg-[var(--surface-raised)] p-4" data-testid="merge-panel">
+    <div v-if="mergeMode" class="shrink-0 space-y-3 rounded-lg bg-elevated p-4" data-testid="merge-panel">
       <UFormField label="Общая формулировка">
         <UTextarea v-model="mergeText" :rows="3" autoresize class="w-full" placeholder="Отметьте две записи или больше" />
       </UFormField>

@@ -57,9 +57,9 @@ const typeLabel = (type: string) => (type === 'mandatory' ? 'Требовани�
 </script>
 
 <template>
-  <div class="scroll-y print-flow h-full min-h-0 pr-1">
+  <div class="overflow-y-auto print-flow h-full min-h-0 p-4 sm:p-6">
     <div class="mx-auto max-w-5xl space-y-4 pb-6" data-testid="result">
-      <UCard :ui="{ root: 'panel ring-0 bg-[var(--surface)]', body: 'grid gap-6 p-5 sm:p-6 md:grid-cols-[auto_1fr]' }" aria-label="Итоговая оценка">
+      <UCard :ui="{ body: 'grid gap-6 p-5 sm:p-6 md:grid-cols-[auto_1fr]' }" aria-label="Итоговая оценка">
         <div class="flex items-center gap-4">
           <p class="text-6xl font-bold tracking-tight text-primary" data-testid="score">{{ result.total }}<small class="ml-1 text-lg font-medium text-muted">из 100</small></p>
         </div>
@@ -69,7 +69,7 @@ const typeLabel = (type: string) => (type === 'mandatory' ? 'Требовани�
           <p class="text-sm text-muted">{{ scenario.title }}</p>
         </div>
         <div class="grid gap-4 sm:grid-cols-3 md:col-span-2">
-          <div v-for="metric in metrics" :key="metric.label" class="rounded-2xl bg-[var(--surface-raised)] p-4">
+          <div v-for="metric in metrics" :key="metric.label" class="rounded-lg bg-elevated p-4">
             <p class="text-2xl font-bold">{{ metric.value }}</p>
             <p class="mb-2 text-sm text-muted">{{ metric.label }}</p>
             <UProgress :model-value="metric.percent" size="sm" :aria-label="metric.label" />
@@ -86,14 +86,14 @@ const typeLabel = (type: string) => (type === 'mandatory' ? 'Требовани�
       </div>
 
       <div class="grid gap-4 md:grid-cols-2">
-        <UCard :ui="{ root: 'panel ring-0 bg-[var(--surface)]', body: 'space-y-2 p-5' }">
+        <UCard :ui="{ body: 'space-y-2 p-5' }">
           <h2 class="flex items-center gap-2 text-lg font-semibold"><UIcon name="i-lucide-circle-check-big" class="size-5 text-primary" />Что получилось</h2>
           <ul v-if="strengths.length" class="list-disc space-y-1 pl-5 text-sm text-toned">
             <li v-for="part in strengths" :key="part.id">{{ part.label }}: {{ String(part.score).replace('.', ',') }} из {{ part.max }}</li>
           </ul>
           <p v-else class="text-sm text-muted">Ни один критерий пока не набрал 70% баллов. Ниже подробно, что улучшить.</p>
         </UCard>
-        <UCard :ui="{ root: 'panel ring-0 bg-[var(--surface)]', body: 'space-y-2 p-5' }" data-testid="recommendations">
+        <UCard :ui="{ body: 'space-y-2 p-5' }" data-testid="recommendations">
           <h2 class="flex items-center gap-2 text-lg font-semibold"><UIcon name="i-lucide-trending-up" class="size-5 text-warning" />Что улучшить</h2>
           <ul class="list-disc space-y-1 pl-5 text-sm text-toned">
             <li v-for="item in result.recommendations" :key="item">{{ item }}</li>
@@ -101,23 +101,23 @@ const typeLabel = (type: string) => (type === 'mandatory' ? 'Требовани�
         </UCard>
       </div>
 
-      <UCard v-if="result.missedCategories.length > 0" :ui="{ root: 'panel ring-0 bg-[var(--surface)]', body: 'space-y-2 p-5' }" data-testid="missed">
+      <UCard v-if="result.missedCategories.length > 0" :ui="{ body: 'space-y-2 p-5' }" data-testid="missed">
         <h2 class="text-lg font-semibold">Пропущенные категории: {{ result.missedCategories.length }}</h2>
         <ul class="list-disc space-y-1 pl-5 text-sm text-toned">
           <li v-for="item in result.missedCategories" :key="item">{{ item }}</li>
         </ul>
       </UCard>
 
-      <UAccordion v-model="open" :items="items" type="multiple" :ui="{ root: 'panel px-4', item: 'border-[var(--border-subtle)]', trigger: 'min-h-12 text-[15px]' }">
+      <UAccordion v-model="open" :items="items" type="multiple" :ui="{ root: 'rounded-lg border border-default px-4', item: 'border-default', trigger: 'min-h-12 text-[15px]' }">
         <template #parts-body>
           <table class="w-full text-sm">
             <thead><tr class="text-left text-muted"><th class="py-1 font-medium">Критерий</th><th class="py-1 text-right font-medium">Баллы</th></tr></thead>
             <tbody>
-              <tr v-for="part in result.parts" :key="part.id" class="border-t border-[var(--border-subtle)] align-top">
+              <tr v-for="part in result.parts" :key="part.id" class="border-t border-default align-top">
                 <td class="py-2">{{ part.label }}<small class="block text-muted">{{ part.note }}</small></td>
                 <td class="py-2 text-right whitespace-nowrap">{{ String(part.score).replace('.', ',') }} / {{ part.max }}</td>
               </tr>
-              <tr v-for="item in result.penalties" :key="item.id" class="border-t border-[var(--border-subtle)] align-top">
+              <tr v-for="item in result.penalties" :key="item.id" class="border-t border-default align-top">
                 <td class="py-2">{{ item.label }}<small class="block text-muted">{{ item.detail }}</small></td>
                 <td class="py-2 text-right text-error">−{{ item.points }}</td>
               </tr>
@@ -180,7 +180,7 @@ const typeLabel = (type: string) => (type === 'mandatory' ? 'Требовани�
                   <tr class="text-left text-muted"><th class="py-1 pr-2 font-medium">Раздел</th><th class="py-1 pr-2 font-medium">Сведение и значение</th><th class="py-1 pr-2 font-medium">Тип</th><th class="py-1 pr-2 font-medium">В диалоге</th><th class="py-1 pr-2 font-medium">В реестре</th><th class="py-1 font-medium">В ТЗ</th></tr>
                 </thead>
                 <tbody>
-                  <tr v-for="row in sortedEtalon" :key="row.factId" class="border-t border-[var(--border-subtle)] align-top">
+                  <tr v-for="row in sortedEtalon" :key="row.factId" class="border-t border-default align-top">
                     <td class="py-2 pr-2">{{ row.section }}</td>
                     <td class="py-2 pr-2"><strong>{{ row.label }}.</strong> {{ row.value }}</td>
                     <td class="py-2 pr-2">{{ typeLabel(row.requirementType) }}</td>

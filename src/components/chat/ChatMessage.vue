@@ -30,8 +30,8 @@ const author = computed(() => (isCustomer.value ? props.customerName : 'Вы'));
 const ui = computed(() => ({
   container: 'pb-1.5 gap-2.5',
   content: isCustomer.value
-    ? 'bg-[var(--surface-raised)] border border-[var(--border-subtle)] text-default'
-    : 'bg-[var(--surface-active)] text-primary',
+    ? 'bg-elevated border border-default text-default'
+    : 'bg-primary/10 text-primary',
 }));
 </script>
 

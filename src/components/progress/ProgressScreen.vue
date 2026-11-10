@@ -18,26 +18,26 @@ const info: AccordionItem[] = [
 </script>
 
 <template>
-  <section v-if="summary" class="panel scroll-y print-flow h-full min-h-0 p-4 sm:p-6" aria-labelledby="my-progress-title">
+  <section v-if="summary" class="overflow-y-auto print-flow h-full min-h-0 p-4 sm:p-6" aria-labelledby="my-progress-title">
     <h2 id="my-progress-title" class="text-xl font-semibold">Мой прогресс</h2>
     <p class="mt-1 text-sm text-muted">{{ scenario.title }} · {{ attempt?.studentName }}</p>
 
     <dl class="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <div class="rounded-2xl bg-[var(--surface-raised)] p-4">
+      <div class="rounded-lg bg-elevated p-4">
         <dt class="text-xs text-muted">Темы исследованы</dt>
         <dd class="text-2xl font-bold">{{ summary.coveragePercent }}%</dd>
         <dd class="text-xs text-muted">{{ summary.explored }} из {{ summary.all }}</dd>
       </div>
-      <div class="rounded-2xl bg-[var(--surface-raised)] p-4">
+      <div class="rounded-lg bg-elevated p-4">
         <dt class="text-xs text-muted">Вопросов задано</dt>
         <dd class="text-2xl font-bold" data-testid="questions-count">{{ summary.questions }}</dd>
       </div>
-      <div class="rounded-2xl bg-[var(--surface-raised)] p-4">
+      <div class="rounded-lg bg-elevated p-4">
         <dt class="text-xs text-muted">Требований в реестре</dt>
         <dd class="text-2xl font-bold">{{ summary.requirements }}</dd>
         <dd class="text-xs text-muted">уточнить: {{ summary.needsClarification }} · противоречий: {{ summary.conflicts }}</dd>
       </div>
-      <div class="rounded-2xl bg-[var(--surface-raised)] p-4">
+      <div class="rounded-lg bg-elevated p-4">
         <dt class="text-xs text-muted">Разделов ТЗ заполнено</dt>
         <dd class="text-2xl font-bold">{{ summary.filledSections }} из {{ summary.totalSections }}</dd>
       </div>

@@ -11,7 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
-    AppHeader: typeof import('./src/components/layout/AppHeader.vue')['default']
+    AppSidebar: typeof import('./src/components/layout/AppSidebar.vue')['default']
     CaseOverview: typeof import('./src/components/onboarding/CaseOverview.vue')['default']
     CategoryProgress: typeof import('./src/components/progress/CategoryProgress.vue')['default']
     ChatComposer: typeof import('./src/components/chat/ChatComposer.vue')['default']
@@ -41,6 +41,11 @@ declare module 'vue' {
     UChatPromptSubmit: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/ChatPromptSubmit.vue')['default']
     UCheckbox: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Checkbox.vue')['default']
     UCheckboxGroup: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/CheckboxGroup.vue')['default']
+    UDashboardGroup: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/DashboardGroup.vue')['default']
+    UDashboardNavbar: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/DashboardNavbar.vue')['default']
+    UDashboardPanel: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/DashboardPanel.vue')['default']
+    UDashboardSidebar: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/DashboardSidebar.vue')['default']
+    UDashboardSidebarToggle: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/DashboardSidebarToggle.vue')['default']
     UDrawer: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Drawer.vue')['default']
     UDropdownMenu: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/DropdownMenu.vue')['default']
     UEmpty: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Empty.vue')['default']
@@ -54,11 +59,8 @@ declare module 'vue' {
     USelect: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Select.vue')['default']
     USeparator: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Separator.vue')['default']
     USlideover: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Slideover.vue')['default']
-    UTabs: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Tabs.vue')['default']
     UTextarea: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Textarea.vue')['default']
-    UTooltip: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Tooltip.vue')['default']
     WelcomeScreen: typeof import('./src/components/onboarding/WelcomeScreen.vue')['default']
-    WorkspaceNavigation: typeof import('./src/components/layout/WorkspaceNavigation.vue')['default']
     WorkspaceShell: typeof import('./src/components/layout/WorkspaceShell.vue')['default']
   }
 }

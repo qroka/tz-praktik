@@ -20,7 +20,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <UCard :ui="{ root: ['ring-0 border bg-[var(--surface-raised)]', selected ? 'border-primary' : 'border-[var(--border-subtle)]'], body: 'space-y-2.5 p-4' }" data-testid="requirement">
+  <UCard :ui="{ root: ['bg-elevated', selected ? 'ring-2 ring-primary' : ''], body: 'space-y-2.5 p-4' }" data-testid="requirement">
     <div class="flex items-start gap-3">
       <UCheckbox v-if="mergeMode" :model-value="selected" aria-label="Выбрать для объединения" class="mt-0.5" @update:model-value="emit('pick')" />
       <p class="min-w-0 flex-1 whitespace-pre-wrap [overflow-wrap:anywhere]">{{ item.text }}</p>

@@ -276,7 +276,7 @@ test('Legacy: файл прогресса стандартного режима 
   await page.evaluate((value) => localStorage.setItem('tz-praktikum:attempt:v1', value), raw);
   await page.reload();
   await expect(page.getByTestId('message-student')).toHaveCount(1);
-  await expect(page.getByText('Незавершённая попытка из прежней версии')).toBeVisible();
+  await expect(page.getByText('Незавершённая попытка из прежней версии', { exact: true })).toBeVisible();
 });
 
 test('Клавиатура: старт и отправка без мыши', async ({ page }) => {
@@ -315,7 +315,8 @@ test.describe('10. Мобильная компоновка 375 px', () => {
     await page.getByRole('dialog').getByRole('button', { name: 'Показать в переписке' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
 
-    await page.getByRole('tab', { name: /^ТЗ/ }).click();
+    await page.getByRole('button', { name: 'Меню', exact: true }).click();
+    await page.getByRole('button', { name: /Редактор ТЗ/ }).click();
     await page.getByLabel('Раздел ТЗ').click();
     await page.getByRole('option', { name: /^6\./ }).click();
     await page.getByLabel(/Текст раздела/).fill('Текст на телефоне');
@@ -324,4 +325,20 @@ test.describe('10. Мобильная компоновка 375 px', () => {
     await expect(page.getByTestId('score')).toBeVisible();
     expect(await noOverflow()).toBe(true);
   });
+});
+
+test('Тема и режим переключаются и сохраняются', async ({ page }) => {
+  await start(page, 'Тема');
+  await expect(page.locator('html')).toHaveClass(/dark/);
+  await page.getByRole('button', { name: 'Включить светлую тему' }).click();
+  await expect(page.locator('html')).not.toHaveClass(/dark/);
+
+  await page.getByRole('button', { name: 'Меню попытки' }).click();
+  await page.getByRole('menuitem', { name: 'Тема оформления' }).click();
+  await page.getByRole('menuitem', { name: 'Небо' }).click();
+  await expect(page.locator('html')).toHaveCSS('--ui-radius', '0.75rem');
+
+  await page.reload();
+  await expect(page.locator('html')).not.toHaveClass(/dark/);
+  await expect(page.locator('html')).toHaveCSS('--ui-radius', '0.75rem');
 });
