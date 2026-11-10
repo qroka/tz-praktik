@@ -48,7 +48,7 @@ const ui = computed(() => ({
       <template #content>
         <span class="sr-only">{{ author }}:</span>
         <p v-if="quoted" class="mb-2 line-clamp-2 border-l-2 border-primary/60 pl-2 text-xs text-toned">Уточнение: {{ quoted.text }}</p>
-        <p class="bubble text-[15px] leading-relaxed" :class="isCustomer ? '' : 'text-default'">{{ message.text }}</p>
+        <p class="bubble text-[0.9375rem] leading-relaxed" :class="isCustomer ? '' : 'text-default'">{{ message.text }}</p>
       </template>
     </UChatMessage>
 

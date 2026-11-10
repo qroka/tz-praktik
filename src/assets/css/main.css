@@ -7,8 +7,15 @@
   --font-sans: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
 }
 
+/* Масштаб интерфейса 1.1 на десктопе (от 1024 px, где боковая панель постоянная).
+   Всё в проекте задано в rem, поэтому достаточно размера корня; на мобильных остаётся 100%. */
 html {
   -webkit-font-smoothing: antialiased;
+}
+@media (min-width: 1024px) {
+  html {
+    font-size: 110%;
+  }
 }
 
 /* Тонкая полоса прокрутки во всём приложении: цвета берутся из токенов темы. */
@@ -34,7 +41,7 @@ html {
 }
 
 body {
-  font-size: 15px;
+  font-size: 0.9375rem;
   overflow-x: hidden;
 }
 

@@ -106,7 +106,7 @@ function saveRequirement(draft: RequirementDraft) {
         <template #leading><span class="size-2 rounded-full bg-current" aria-hidden="true" /></template>
       </UBadge></UTooltip>
       <div class="flex gap-2">
-        <UTooltip text="Описание учебного кейса"><UButton color="neutral" variant="outline" icon="i-lucide-book-open" :label="props.layout === 'compact' ? undefined : 'О кейсе'" aria-label="О кейсе" class="min-h-10" @click="caseOpen = true" /></UTooltip>
+        <UTooltip text="Описание учебного кейса"><UButton color="neutral" variant="outline" icon="i-lucide-book-open" :label="props.layout === 'compact' ? undefined : 'О кейсе'" :square="props.layout === 'compact'" aria-label="О кейсе" class="min-h-10" :class="{ 'min-w-10': props.layout === 'compact' }" @click="caseOpen = true" /></UTooltip>
         <UTooltip text="Быстрый просмотр и добавление требований"><UButton
           color="neutral"
           variant="outline"

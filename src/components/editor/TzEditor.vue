@@ -91,7 +91,7 @@ async function move(ids: string[]) {
         :aria-label="`Текст раздела: ${section.title}`"
         placeholder="Сформулируйте требования своими словами: что система должна делать, какие значения, при каких условиях."
         class="min-h-0 flex-1"
-        :ui="{ base: 'h-full min-h-48 resize-none text-[15px] leading-relaxed' }"
+        :ui="{ base: 'h-full min-h-48 resize-none text-[0.9375rem] leading-relaxed' }"
         @update:model-value="onInput"
       />
 

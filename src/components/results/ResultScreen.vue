@@ -108,7 +108,7 @@ const typeLabel = (type: string) => (type === 'mandatory' ? 'Требовани�
         </ul>
       </UCard>
 
-      <UAccordion v-model="open" :items="items" type="multiple" :ui="{ root: 'rounded-lg border border-default px-4', item: 'border-default', trigger: 'min-h-12 text-[15px]' }">
+      <UAccordion v-model="open" :items="items" type="multiple" :ui="{ root: 'rounded-lg border border-default px-4', item: 'border-default', trigger: 'min-h-12 text-[0.9375rem]' }">
         <template #parts-body>
           <table class="w-full text-sm">
             <thead><tr class="text-left text-muted"><th class="py-1 font-medium">Критерий</th><th class="py-1 text-right font-medium">Баллы</th></tr></thead>
