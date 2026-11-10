@@ -22,6 +22,8 @@ const QUALITY_NOTE: Partial<Record<MessageQuality, string>> = {
   correction: 'Значение поправлено',
 };
 
+/** Заказчик не понял вопрос или просит уточнить: только тогда уместны «Уточнить» и «Повторить». */
+const needsFollowUp = computed(() => props.message.quality === 'unrecognized' || props.message.quality === 'clarify');
 const isCustomer = computed(() => props.message.role === 'customer');
 const note = computed(() => (!isCustomer.value && props.message.quality ? QUALITY_NOTE[props.message.quality] : undefined));
 const designerNote = computed(() => isCustomer.value && props.message.quality === 'unknown_found');
@@ -53,14 +55,18 @@ const ui = computed(() => ({
     </UChatMessage>
 
     <div class="flex flex-wrap items-center gap-x-2 gap-y-1 pb-3 text-xs" :class="isCustomer ? 'ps-11' : 'justify-end'">
-      <UTooltip v-if="note" text="Как заказчик отнёсся к вашему вопросу"><UBadge color="neutral" variant="subtle" size="sm" :label="note" /></UTooltip>
       <UTooltip v-if="designerNote" text="Это предложение инженера, а не требование заказчика"><UBadge color="primary" variant="subtle" size="sm" label="Решение предлагает проектировщик" /></UTooltip>
       <UTooltip v-if="savedCount > 0" text="Ответ уже сохранён в реестре требований"><UBadge color="primary" variant="subtle" size="sm" icon="i-lucide-check" :label="`В реестре${savedCount > 1 ? `: ${savedCount}` : ''}`" /></UTooltip>
       <template v-if="!readOnly && isCustomer">
         <UTooltip text="Записать этот ответ в реестр требований"><UButton size="sm" variant="soft" icon="i-lucide-bookmark-plus" label="Сохранить как требование" class="min-h-9" @click="emit('capture')" /></UTooltip>
-        <UTooltip text="Задать вопрос именно по этому ответу"><UButton size="sm" color="neutral" variant="ghost" icon="i-lucide-corner-down-right" label="Уточнить" aria-label="Уточнить" class="min-h-9" @click="emit('clarify')" /></UTooltip>
+        <UTooltip v-if="needsFollowUp" text="Задать вопрос именно по этому ответу"><UButton size="sm" color="neutral" variant="ghost" icon="i-lucide-corner-down-right" label="Уточнить" aria-label="Уточнить" class="min-h-9" @click="emit('clarify')" /></UTooltip>
       </template>
-      <UTooltip v-if="!readOnly && !isCustomer" text="Вставить этот вопрос в поле ввода ещё раз"><UButton size="sm" color="neutral" variant="ghost" icon="i-lucide-rotate-ccw" label="Повторить" aria-label="Задать снова" class="min-h-9" @click="emit('repeat')" /></UTooltip>
+      <UTooltip v-if="!readOnly && !isCustomer && needsFollowUp" text="Вставить этот вопрос в поле ввода ещё раз"><UButton size="sm" color="neutral" variant="ghost" icon="i-lucide-rotate-ccw" label="Повторить" aria-label="Задать снова" class="min-h-9" @click="emit('repeat')" /></UTooltip>
+    </div>
+
+    <!-- Оценка вопроса: отдельной строкой по центру, не под сообщением -->
+    <div v-if="note" class="flex justify-center pb-3" data-testid="message-note">
+      <UTooltip text="Как заказчик отнёсся к вашему вопросу"><UBadge color="neutral" variant="subtle" size="md" :label="note" /></UTooltip>
     </div>
   </div>
 </template>

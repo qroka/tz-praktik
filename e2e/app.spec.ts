@@ -80,15 +80,20 @@ test('2–4. Вопрос, ответ, прогресс, уточнение, п�
   await expect(page.getByTestId('explored-count')).toContainText('из 13');
 
   expect(await ask(page, 'Какое отклонение допустимо?')).toMatch(/2|двух/);
-  expect(await ask(page, 'Какое давление?')).not.toMatch(/\d/);
+  // Короткие ответы без вопроса: кнопок «Уточнить» и «Повторить» нет.
+  await expect(page.getByTestId('message-customer').nth(1).getByRole('button', { name: 'Уточнить' })).toHaveCount(0);
+  await expect(page.getByTestId('message-student').first().getByRole('button', { name: 'Задать снова' })).toHaveCount(0);
 
-  await page.getByTestId('message-customer').nth(1).getByRole('button', { name: 'Уточнить' }).click();
+  // Заказчик переспрашивает: появляются «Уточнить», «Повторить» и центральная метка.
+  expect(await ask(page, 'Какое давление?')).not.toMatch(/\d/);
+  await expect(page.getByTestId('message-note')).toContainText('Заказчик уточняет');
+  await page.getByTestId('message-customer').last().getByRole('button', { name: 'Уточнить' }).click();
   await expect(page.getByTestId('reply-target')).toContainText('Уточнение');
-  expect((await ask(page, 'Это точно или примерно?')).length).toBeGreaterThan(0);
+  expect((await ask(page, 'После насоса')).length).toBeGreaterThan(0);
   await expect(page.getByTestId('reply-target')).toHaveCount(0);
 
-  await page.getByTestId('message-student').first().getByRole('button', { name: 'Задать снова' }).click();
-  await expect(input).toHaveValue('Какая температура воды нужна после теплообменника?');
+  await page.getByTestId('message-student').filter({ hasText: 'Какое давление?' }).getByRole('button', { name: 'Задать снова' }).click();
+  await expect(input).toHaveValue('Какое давление?');
 });
 
 test('«Расскажите всё» не выдаёт значений', async ({ page }) => {
