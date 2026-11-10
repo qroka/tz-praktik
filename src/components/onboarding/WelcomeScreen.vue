@@ -28,7 +28,7 @@ function onFile(event: Event) {
   <main class="mx-auto flex min-h-dvh w-full max-w-6xl flex-col justify-center gap-6 px-4 py-8 sm:px-6 lg:flex-row lg:items-center lg:gap-10">
     <section class="flex-1 space-y-6">
       <div class="flex items-center gap-3">
-        <TzLogo class="size-11 text-highlighted" />
+        <TzLogo class="size-11 text-primary" />
         <h1 class="text-3xl font-bold tracking-tight">ТЗ Практикум</h1>
       </div>
       <p class="max-w-xl text-base text-toned">

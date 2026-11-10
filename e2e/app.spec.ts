@@ -383,3 +383,18 @@ test('Редактор ТЗ: после удаления строки из те�
   await page.getByTestId('add-to-tz').click();
   await expect(page.getByLabel(/Текст раздела/)).toHaveValue(/Поддерживать температуру воды 60/);
 });
+
+test('Логотип и фавикон красятся основным цветом выбранной темы', async ({ page }) => {
+  await start(page, 'Цвет');
+  const icon = () => page.evaluate(() => document.querySelector('link[rel="icon"]')!.getAttribute('href')!);
+  const logoColor = () => page.locator('aside svg, [data-slot="header"] svg').first().evaluate((el) => getComputedStyle(el).color);
+  await expect.poll(icon).toContain('data:image/svg+xml');
+  const before = await icon();
+  const beforeLogo = await logoColor();
+
+  await page.getByRole('button', { name: 'Меню попытки' }).click();
+  await page.getByRole('menuitem', { name: 'По умолчанию' }).click();
+  await page.getByRole('menuitemcheckbox', { name: 'Багрянец' }).click();
+  await expect.poll(icon).not.toBe(before);
+  expect(await logoColor()).not.toBe(beforeLogo);
+});
