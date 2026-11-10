@@ -72,6 +72,7 @@ function confirmImport() {
       <template v-if="showBar" #header>
         <UDashboardNavbar class="no-print">
           <template #right>
+            <div id="navbar-actions" class="flex items-center gap-2" />
             <UTooltip v-if="showToggle" :text="sideIsRegistry ? 'Реестр требований: можно сверяться при написании ТЗ' : 'Прогресс по направлениям и подсказка'">
               <UButton
                 color="neutral"

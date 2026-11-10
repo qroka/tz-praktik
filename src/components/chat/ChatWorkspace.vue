@@ -90,12 +90,13 @@ function saveRequirement(draft: RequirementDraft) {
 
 <template>
   <section class="flex h-full min-h-0 flex-col overflow-hidden" aria-label="Переписка с заказчиком">
-    <header class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-default px-4 py-3 sm:px-5 sm:py-4">
-      <div class="hidden min-w-0 flex-1 sm:block">
+    <!-- На телефоне элементы шапки чата переносятся в единственную верхнюю панель приложения -->
+    <Teleport to="#navbar-actions" :disabled="props.layout !== 'compact'" defer>
+    <header :class="props.layout === 'compact' ? 'flex items-center gap-2' : 'flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-default px-4 py-3 sm:px-5 sm:py-4'">
+      <div v-if="props.layout !== 'compact'" class="min-w-0 flex-1">
         <h2 class="truncate text-lg font-semibold">Диалог с заказчиком</h2>
         <p class="truncate text-sm text-muted">{{ scenario.title }} · {{ scenario.customer.role }}</p>
       </div>
-      <span class="flex-1 sm:hidden" />
       <UTooltip text="Состояние тренировки"><UBadge
         :color="readOnly ? 'neutral' : 'primary'"
         variant="subtle"
@@ -111,14 +112,17 @@ function saveRequirement(draft: RequirementDraft) {
           color="neutral"
           variant="outline"
           icon="i-lucide-clipboard-list"
-          :label="`Реестр ${summary?.requirements ?? 0}`"
-          aria-label="Реестр"
+          :label="props.layout === 'compact' ? undefined : `Реестр ${summary?.requirements ?? 0}`"
+          :square="props.layout === 'compact'"
+          :aria-label="`Реестр: ${summary?.requirements ?? 0}`"
           class="min-h-10"
+          :class="{ 'size-10 shrink-0 justify-center': props.layout === 'compact' }"
           data-testid="open-registry"
           @click="registryOpen = true"
         /></UTooltip>
       </div>
     </header>
+    </Teleport>
 
     <div ref="thread" class="overflow-y-auto min-h-0 flex-1 px-3 py-4 sm:px-5" role="log" aria-live="polite" aria-relevant="additions" aria-label="Сообщения" tabindex="0">
       <TransitionGroup name="msg" tag="div" class="mx-auto max-w-4xl">
