@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { formatTime } from '../../composables/useLayout';
 import type { ChatMessage, MessageQuality } from '../../types';
 
 const props = defineProps<{
@@ -28,7 +27,7 @@ const note = computed(() => (!isCustomer.value && props.message.quality ? QUALIT
 const designerNote = computed(() => isCustomer.value && props.message.quality === 'unknown_found');
 const author = computed(() => (isCustomer.value ? props.customerName : 'Вы'));
 const ui = computed(() => ({
-  container: 'pb-1.5 gap-2.5',
+  container: 'pb-2 gap-3',
   content: isCustomer.value
     ? 'bg-elevated border border-default text-default'
     : 'bg-primary/10 text-primary',
@@ -43,14 +42,11 @@ const ui = computed(() => ({
       :parts="[{ type: 'text', text: message.text }]"
       :side="isCustomer ? 'left' : 'right'"
       variant="soft"
-      compact
       :avatar="isCustomer ? { text: customerInitials, alt: customerName } : undefined"
       :ui="{ ...ui, root: 'max-w-full', container: `${ui.container} ${isCustomer ? 'max-w-[88%] lg:max-w-[80%]' : 'max-w-[88%] lg:max-w-[75%]'}` }"
     >
       <template #content>
-        <p class="mb-1 text-xs" :class="isCustomer ? 'text-muted' : 'text-primary/80'">
-          <span>{{ author }}</span> · <time :dateTime="message.at">{{ formatTime(message.at) }}</time>
-        </p>
+        <span class="sr-only">{{ author }}:</span>
         <p v-if="quoted" class="mb-2 line-clamp-2 border-l-2 border-primary/60 pl-2 text-xs text-toned">Уточнение: {{ quoted.text }}</p>
         <p class="bubble text-[15px] leading-relaxed" :class="isCustomer ? '' : 'text-default'">{{ message.text }}</p>
       </template>

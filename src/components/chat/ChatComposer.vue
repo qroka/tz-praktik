@@ -43,21 +43,22 @@ defineExpose({ focus });
       ref="prompt"
       v-model="text"
       placeholder="Задайте следующий вопрос заказчику..."
-      variant="outline"
-      :maxrows="6"
+      variant="subtle"
+      :rows="2"
+      :maxrows="8"
       :autofocus="false"
       aria-label="Ваш вопрос заказчику"
-      :ui="{ root: 'bg-default ring-default' }"
       @submit.prevent="submit"
       @update:model-value="error = null"
     >
-      <UChatPromptSubmit :disabled="busy || tooLong" color="primary" aria-label="Отправить" class="size-11" @click.prevent="submit" />
+      <template #footer>
+        <div class="flex min-w-0 flex-1 items-center gap-3 text-xs text-muted">
+          <span v-if="error" class="flex items-center gap-1.5 text-error" role="alert"><UIcon name="i-lucide-circle-alert" class="size-4 shrink-0" />{{ error }}</span>
+          <span v-else-if="!compactLayout">Enter отправляет, Shift + Enter переносит строку</span>
+          <span v-if="text.length > MAX_MESSAGE - 100" class="ms-auto" :class="tooLong ? 'text-error' : ''">{{ text.length }}/{{ MAX_MESSAGE }}</span>
+        </div>
+        <UChatPromptSubmit :disabled="busy || tooLong" color="primary" aria-label="Отправить" @click.prevent="submit" />
+      </template>
     </UChatPrompt>
-    <div class="flex min-h-6 items-center justify-between gap-3 pt-1.5 text-xs text-muted">
-      <span v-if="error" class="flex items-center gap-1.5 text-error" role="alert"><UIcon name="i-lucide-circle-alert" class="size-4" />{{ error }}</span>
-      <span v-else-if="!compactLayout">Enter отправляет, Shift + Enter переносит строку</span>
-      <span v-else />
-      <span v-if="text.length > MAX_MESSAGE - 100" :class="tooLong ? 'text-error' : ''">{{ text.length }}/{{ MAX_MESSAGE }}</span>
-    </div>
   </div>
 </template>
