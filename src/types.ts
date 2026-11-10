@@ -156,6 +156,8 @@ export type Scenario = {
   subjectConcepts: string[];
   /** Понятие-место отменяет понятие-предмет: «после теплообменника» — не вопрос о теплообменнике. */
   conceptSuppress?: Record<string, string[]>;
+  /** Составное понятие появляется, когда в вопросе есть все его части. */
+  conceptCombos?: Record<string, string[]>;
   attributeConcepts: string[];
   ambiguities: Ambiguity[];
   topics: Record<string, TopicContext>;

@@ -424,7 +424,9 @@ export function respond(previous: EngineState, input: DialogueInput, scenario: S
   // Ответ на встречный вопрос дополняет прошлый вопрос, только если в нём есть что-то по делу.
   const pendingSubjects = scenario.subjectConcepts.filter((c) => state.pending?.concepts.includes(c));
   const changesSubject = scenario.subjectConcepts.some((c) => analysis.concepts.has(c) && !pendingSubjects.includes(c) && !['hc', 'air'].includes(c));
-  const usePending = state.pending && analysis.concepts.size > 0 && !rawIsService && !changesSubject;
+  // «Перегрев» и «нагрев» — это про температуру, даже если слова «температура» в вопросе нет.
+  const newTemperature = ['heat', 'overheat'].some((c) => analysis.concepts.has(c) && !state.pending?.concepts.includes(c));
+  const usePending = state.pending && analysis.concepts.size > 0 && !rawIsService && !changesSubject && !newTemperature;
   if (state.pending && !usePending) state = { ...state, pending: null };
   const ctx: MatchContext = { ...baseCtx, extraConcepts: usePending ? state.pending!.concepts : undefined };
   const ctxFacts = input.replyTo?.factIds?.length ? input.replyTo.factIds : state.lastFactIds;
