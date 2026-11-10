@@ -174,9 +174,7 @@ test('6–7. ТЗ: 13 разделов, перенос, завершение, о
   await expect(page.getByTestId('tz-filled')).toHaveText('1 из 13');
 
   await page.getByRole('button', { name: /Требования к автоматическому регулированию/ }).click();
-  await page.getByTestId('open-picker').click();
-  await page.getByRole('dialog').getByText('Поддерживать температуру воды после теплообменника 60 °C').click();
-  await page.getByRole('button', { name: /Перенести в раздел 6/ }).click();
+  await page.getByTestId('add-to-tz').click();
   await expect(page.getByLabel(/Текст раздела/)).toHaveValue(/Поддерживать температуру/);
   await page.getByLabel(/Текст раздела/).fill('Система поддерживает температуру воды после теплообменника 60 °C.');
 

@@ -1,18 +1,15 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useTemplateRef } from 'vue';
+import { computed } from 'vue';
 import { minSectionWords } from '../../data/evaluation';
 import type { Layout } from '../../composables/useLayout';
 import { useSession } from '../../composables/useSession';
-import { moveRequirementsToSection, setTzText } from '../../state/attempt';
+import { setTzText } from '../../state/attempt';
 import { countWords } from '../../state/learningProgress';
-import RequirementPicker from './RequirementPicker.vue';
 
 const props = defineProps<{ layout: Layout }>();
 const emit = defineEmits<{ finish: [] }>();
 
-const { attempt, scenario, update, notify } = useSession();
-const pickerOpen = ref(false);
-const area = useTemplateRef<{ textareaRef?: HTMLTextAreaElement }>('area');
+const { attempt, scenario, update } = useSession();
 
 const total = scenario.tzSections.length;
 const section = computed(() => scenario.tzSections.find((item) => item.id === attempt.value!.activeSection) ?? scenario.tzSections[0]);
@@ -34,15 +31,6 @@ const go = (id: number) => update((current) => ({ ...current, activeSection: id 
 function onInput(value: string | number | undefined) {
   const id = section.value.id;
   update((current) => setTzText(current, id, String(value ?? '')));
-}
-
-async function move(ids: string[]) {
-  const id = section.value.id;
-  update((current) => moveRequirementsToSection(current, id, ids));
-  pickerOpen.value = false;
-  notify('success', `Записей перенесено: ${ids.length}`, 'Перепишите черновик раздела своими словами.');
-  await nextTick();
-  area.value?.textareaRef?.focus();
 }
 </script>
 
@@ -86,7 +74,6 @@ async function move(ids: string[]) {
 
       <UTextarea
         :key="section.id"
-        ref="area"
         :model-value="text"
         :aria-label="`Текст раздела: ${section.title}`"
         placeholder="Сформулируйте требования своими словами: что система должна делать, какие значения, при каких условиях."
@@ -97,15 +84,11 @@ async function move(ids: string[]) {
 
       <div class="flex flex-wrap items-center gap-2">
         <span class="mr-auto text-sm text-muted">Слов: {{ countWords(text) }}</span>
-        <UTooltip text="Перенести сохранённые требования в этот раздел"><UButton color="neutral" variant="outline" icon="i-lucide-clipboard-list" label="Из реестра" data-testid="open-picker" @click="pickerOpen = true" /></UTooltip>
         <UTooltip text="Предыдущий раздел"><UButton color="neutral" variant="outline" icon="i-lucide-arrow-left" aria-label="Предыдущий раздел" :disabled="section.id === 1" @click="go(section.id - 1)" /></UTooltip>
         <UTooltip text="Следующий раздел"><UButton color="neutral" variant="outline" icon="i-lucide-arrow-right" aria-label="Следующий раздел" :disabled="section.id === total" @click="go(section.id + 1)" /></UTooltip>
         <UTooltip text="Завершить попытку и получить оценку"><UButton icon="i-lucide-flag" label="Завершить и проверить" data-testid="finish" @click="emit('finish')" /></UTooltip>
       </div>
     </section>
 
-    <USlideover v-model:open="pickerOpen" side="right" title="Перенос из реестра" :description="`Раздел ${section.id}. ${section.title}`" :ui="{ content: 'max-w-md' }">
-      <template #body><RequirementPicker :section-id="section.id" @move="move" /></template>
-    </USlideover>
   </div>
 </template>
