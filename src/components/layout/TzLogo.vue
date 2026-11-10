@@ -1,13 +1,21 @@
 <script setup lang="ts">
-// Знак «ТЗ Практикум»: диалог (пузырь) с текстом задания и галочкой. Основной цвет берётся из темы.
+import { useId } from 'vue';
+
+// Знак «ТЗ Практикум»: пузырь диалога с вырезанными строками текста задания и галочкой, без фона.
+// Цвет — currentColor: белый на тёмной теме, тёмный на светлой.
 defineProps<{ label?: string }>();
+const id = `tz-logo-${useId()}`;
 </script>
 
 <template>
-  <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" :role="label ? 'img' : undefined" :aria-label="label" :aria-hidden="label ? undefined : 'true'">
-    <rect width="32" height="32" rx="7" fill="var(--ui-primary)" />
-    <path d="M9 7h14a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H15l-5.5 4.2V22H9a3 3 0 0 1-3-3v-9a3 3 0 0 1 3-3z" fill="#fff" />
-    <path d="M10.5 12.2h11M10.5 16h4.5" fill="none" stroke="var(--ui-primary)" stroke-width="1.9" stroke-linecap="round" />
-    <path d="M17.2 16.4l1.9 1.9 3.6-4" fill="none" stroke="var(--ui-primary)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+  <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" fill="currentColor" :role="label ? 'img' : undefined" :aria-label="label" :aria-hidden="label ? undefined : 'true'">
+    <defs>
+      <mask :id="id">
+        <rect width="32" height="32" fill="#fff" />
+        <path d="M10.5 12.2h11M10.5 16h4.5" fill="none" stroke="#000" stroke-width="1.9" stroke-linecap="round" />
+        <path d="M17.2 16.4l1.9 1.9 3.6-4" fill="none" stroke="#000" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+      </mask>
+    </defs>
+    <path :mask="`url(#${id})`" d="M7 3h18a4 4 0 0 1 4 4v14a4 4 0 0 1-4 4H16l-7 5.5V25H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4z" />
   </svg>
 </template>

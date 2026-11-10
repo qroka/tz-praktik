@@ -93,7 +93,7 @@ function onFile(event: Event) {
   <UDashboardSidebar v-model:open="open" collapsible resizable :min-size="12" :default-size="15" :max-size="22" :ui="{ footer: 'border-t border-default' }" class="no-print">
     <template #header="{ collapsed }">
       <div class="flex min-w-0 items-center gap-2">
-        <TzLogo class="size-7 shrink-0" />
+        <TzLogo class="size-7 shrink-0 text-highlighted" />
         <h1 v-if="!collapsed" class="truncate text-sm font-semibold">ТЗ Практикум</h1>
       </div>
     </template>
