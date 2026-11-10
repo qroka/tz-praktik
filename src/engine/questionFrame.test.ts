@@ -33,7 +33,7 @@ const cases: [string, string | null, EngineReply['quality'], string[], string][]
   ["Какую температуру воды надо поддерживать?", "temp_setpoint", "useful", ["temp_setpoint"], "60"],
   ["Какая температура поступающей воды зимой?", "temp_inlet_winter", "useful", ["temp_inlet_winter"], "10"],
   ["А летом?", null, "clarify", [], "."],
-  ["Какое допустимое отклонение по температуре?", "temp_tolerance", "blocked", [], "температур|значени"],
+  ["Какое допустимое отклонение по температуре?", "temp_tolerance", "useful", ["temp_tolerance", "temp_setpoint"], "60"],
   ["При какой температуре нужна аварийная остановка нагрева?", "temp_alarm", "useful", ["temp_alarm"], "75"],
   ["Какой рабочий расход воды?", "flow_range", "useful", ["flow_range"], "1[,.]5|полутора"],
   ["При каком расходе считать, что циркуляции нет?", "flow_low", "useful", ["flow_low"], "0[,.]8"],
@@ -194,5 +194,5 @@ it.each(['learning', 'standard', 'strict'] as const)('бессмыслица с 
   expect(result.reply.quality).toBe('unrecognized');
   expect(result.state.disclosed).toEqual(previous.disclosed);
   expect(result.state.pending).toBeNull();
-  expect(result.reply.text).not.toContain('«');
+  expect(result.reply.text.includes('«')).toBe(difficulty !== 'strict');
 });

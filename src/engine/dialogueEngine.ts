@@ -11,7 +11,7 @@ import type {
   ScenarioFact,
   Unit,
 } from '../types';
-import { discloseFacts, factById, isDisclosed, missingPrerequisites } from './factTracker';
+import { categoryProgress, discloseFacts, factById, isDisclosed, missingPrerequisites } from './factTracker';
 import { analyze, findAmbiguity, matchByExample, MIN_INTENT_SCORE, rankIntents, type Analysis, type MatchContext } from './intentMatcher';
 import type { ParsedNumber } from './normalizeText';
 import { fillTemplate, pickVariant } from './responseSelector';
@@ -195,6 +195,18 @@ function nextStep(state: EngineState, steps: ReplyStep[]): ReplyStep | null {
   return steps.find((step) => step.facts.some((id) => !isDisclosed(state, id))) ?? null;
 }
 
+/** Шаг ответа, который раскрывает нужную предпосылку (с самим намерением, чтобы выбрать вариант реплики). */
+function prerequisiteSource(scenario: Scenario, factId: string): { intentId: string; index: number; step: ReplyStep } | null {
+  for (const intent of scenario.intents) {
+    if (intent.kind === 'general' || intent.kind === 'meta' || intent.kind === 'social') continue;
+    const steps = scenario.replies[intent.id] ?? [];
+    const index = steps.findIndex((step) => step.facts.includes(factId));
+    if (index < 0) continue;
+    return { intentId: intent.id, index, step: steps[index] };
+  }
+  return null;
+}
+
 function withImpatience(state: EngineState, input: DialogueInput, scenario: Scenario, text: string): { text: string; state: EngineState } {
   if (state.patience > 1) return { text, state };
   const picked = pickVariant(state, input.seed, 'meta:impatient', scenario.meta.impatient);
@@ -239,13 +251,17 @@ function answerIntent(state: EngineState, intent: Intent, input: DialogueInput, 
 
   const step = nextStep(current, steps);
   if (step) {
-    // Для связанных значений порядок важен: без предпосылки факт не выдаём.
-    const fresh = step.facts.filter((id) => !isDisclosed(current, id));
-    for (const id of fresh) {
-      const fact = factById(scenario, id);
-      if (!fact) continue;
-      const missing = missingPrerequisites(current, fact);
-      if (missing.length) {
+    // Связанные значения заказчик сообщает сам: сначала то, от чего зависит ответ, затем сам ответ.
+    // Студенту не нужно угадывать порядок вопросов.
+    const lead: string[] = [];
+    const leadFacts: string[] = [];
+    for (let guard = 0; guard < 5; guard++) {
+      const missing = step.facts
+        .map((id) => factById(scenario, id))
+        .flatMap((fact) => (fact ? missingPrerequisites(current, fact) : []));
+      if (!missing.length) break;
+      const source = prerequisiteSource(scenario, missing[0]);
+      if (!source) {
         const prerequisite = factById(scenario, missing[0]);
         const picked = pickVariant(current, input.seed, 'meta:prerequisite', scenario.meta.prerequisiteBlock);
         const text = fillTemplate(picked.text, {
@@ -253,24 +269,30 @@ function answerIntent(state: EngineState, intent: Intent, input: DialogueInput, 
         });
         return finish({ ...picked.state, lastFactIds: [] }, text, 'blocked', intent, [], intent.topic);
       }
+      const spoken = pickVariant(current, input.seed, `${source.intentId}:${source.index}`, source.step.variants);
+      current = discloseFacts(spoken.state, source.step.facts);
+      lead.push(spoken.text);
+      leadFacts.push(...source.step.facts);
     }
     const stepIndex = steps.indexOf(step);
-    const picked = aspectVariants
+    const mainPicked = aspectVariants
       ? pickVariant(current, input.seed, `${intent.id}:a:${aspect}`, aspectVariants)
       : pickVariant(current, input.seed, `${intent.id}:${stepIndex}`, step.variants);
+    const picked = lead.length ? { ...mainPicked, text: `${lead.join(' ')} ${mainPicked.text}` } : mainPicked;
     current = discloseFacts(picked.state, step.facts);
-    current = { ...current, lastFactIds: step.facts };
+    const spokenFacts = [...step.facts, ...leadFacts];
+    current = { ...current, lastFactIds: spokenFacts };
     const onlyUnknown = step.facts.every((id) => factById(scenario, id)?.customerConfidence === 'unknown');
     if (intent.kind === 'general') {
       // Общий вопрос открывает только общие сведения и считается слишком общим.
       current = setPatience(bump(current, 'general'), -1);
       const decorated = withImpatience(current, input, scenario, picked.text);
-      return finish(decorated.state, decorated.text, 'general', intent, step.facts, intent.topic);
+      return finish(decorated.state, decorated.text, 'general', intent, spokenFacts, intent.topic);
     }
     current = setPatience(current, 1);
     const mandatory = step.facts.filter((id) => factById(scenario, id)?.requirementType === 'mandatory').length;
     current = bump(current, 'askedMandatory', mandatory);
-    return finish(current, picked.text, onlyUnknown ? 'unknown_found' : 'useful', intent, step.facts, intent.topic);
+    return finish(current, picked.text, onlyUnknown ? 'unknown_found' : 'useful', intent, spokenFacts, intent.topic);
   }
 
   // Этот вопрос задан впервые, а сведения уже прозвучали в другом ответе: это не повтор.
@@ -348,7 +370,15 @@ function answerFallback(state: EngineState, input: DialogueInput, scenario: Scen
   }
   const picked = pickVariant(current, input.seed, 'meta:fallback', scenario.meta.fallback);
   current = picked.state;
-  const decorated = withImpatience(current, input, scenario, picked.text);
+  // Заказчик сам подсказывает, о чём можно спросить: первая ещё не затронутая тема.
+  const open = categoryProgress(scenario, current.disclosed).find((row) => row.found === 0);
+  let fallbackText = picked.text;
+  if (open) {
+    const hint = pickVariant(current, input.seed, 'meta:fallbackHint', scenario.meta.fallbackHint);
+    current = hint.state;
+    fallbackText = `${picked.text} ${fillTemplate(hint.text, { area: open.title })}`;
+  }
+  const decorated = withImpatience(current, input, scenario, fallbackText);
   return finish(decorated.state, decorated.text, 'unrecognized', null, [], current.topic);
 }
 

@@ -82,7 +82,7 @@ describe('Замена ответов', () => {
       pack([], { greeting: ['Здравствуйте, слушаю.'], fallback: ['Не понял, спросите проще.'], clarifications: { pressure: ['Где именно давление?'] } }),
     );
     expect(custom.greeting).toEqual(['Здравствуйте, слушаю.']);
-    expect(talk(custom, ['Абракадабра'])[0].text).toBe('Не понял, спросите проще.');
+    expect(talk(custom, ['Абракадабра'])[0].text).toContain('Не понял, спросите проще.');
     expect(talk(custom, ['Какое давление?'])[0].text).toBe('Где именно давление?');
   });
 

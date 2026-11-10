@@ -144,11 +144,12 @@ describe('Последовательное раскрытие', () => {
     expect(turns[3].reply.text).toContain('75');
     expect(turns[4].reply.factIds).toEqual(['temp_alarm_action']);
   });
-  it('отклонение не раскрывается раньше рабочей температуры', () => {
+  it('отклонение сообщается вместе с рабочей температурой, спрашивать порядок не нужно', () => {
     const { reply, state } = ask('Какое отклонение по температуре допустимо?');
-    expect(reply.quality).toBe('blocked');
-    expect(reply.text).not.toMatch(/\d/);
-    expect(state.disclosed).not.toContain('temp_tolerance');
+    expect(reply.quality).toBe('useful');
+    expect(reply.factIds).toEqual(['temp_tolerance', 'temp_setpoint']);
+    expect(reply.text).toContain('60');
+    expect(state.disclosed).toEqual(expect.arrayContaining(['temp_setpoint', 'temp_tolerance']));
   });
   it('длинный перечень экрана выдаётся порциями', () => {
     const turns = talk(['Что должно отображаться на экране оператора?', 'Что ещё?', 'А ещё?', 'Что ещё?']);
@@ -297,9 +298,9 @@ describe('Режимы сложности и seed', () => {
     const b = mulberry32(5);
     expect([a(), a(), a()]).toEqual([b(), b(), b()]);
   });
-  it('непонятный вопрос не вызывает случайную подсказку', () => {
-    expect(ask('Абракадабра', 'learning').reply.text).not.toContain('«');
-    expect(ask('Абракадабра', 'standard').reply.text).not.toContain('«');
+  it('на непонятный вопрос заказчик сам подсказывает тему, в строгом режиме нет', () => {
+    expect(ask('Абракадабра', 'learning').reply.text).toContain('«');
+    expect(ask('Абракадабра', 'standard').reply.text).toContain('«');
     expect(ask('Абракадабра', 'strict').reply.text.length).toBeLessThan(40);
   });
   it('строгий режим задаёт более короткий встречный вопрос', () => {
