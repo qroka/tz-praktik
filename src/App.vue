@@ -24,7 +24,7 @@ watch(notice, (value) => {
 </script>
 
 <template>
-  <UApp :locale="ru" :toaster="{ position: 'top-center' }">
+  <UApp :locale="ru" :toaster="{ position: 'bottom-center', ui: { viewport: 'bottom-32' } }">
     <WorkspaceShell v-if="attempt" />
     <WelcomeScreen v-else />
   </UApp>
