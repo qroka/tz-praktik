@@ -1,7 +1,7 @@
 import { CircleAlert, Download, FileJson, Play, RotateCcw, TriangleAlert, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { buildAnswerTemplate, parseAnswerPack } from '../engine/answerPack';
-import { createEngineState, respond } from '../engine/dialogueEngine';
+import { createEngineState, respond, respondIsolated } from '../engine/dialogueEngine';
 import { downloadFile } from '../state/exporters';
 import type { StoredPack } from '../state/answerPackStorage';
 import type { Difficulty, EngineReply, Scenario } from '../types';
@@ -74,8 +74,8 @@ export function AnswerLab(props: {
     let state = createEngineState();
     const result: Row[] = [];
     for (const question of list) {
-      if (separate) state = createEngineState();
-      const out = respond(state, { text: question, seed: 1, difficulty }, scenario);
+      const input = { text: question, seed: 1, difficulty };
+      const out = separate ? respondIsolated(input, scenario) : respond(state, input, scenario);
       state = out.state;
       const intent = scenario.intents.find((item) => item.id === out.reply.intentId);
       result.push({ intentId: out.reply.intentId ?? '—', score: out.reply.diagnostic?.score?.toFixed(2) ?? '—', reason: out.reply.diagnostic?.reason ?? '', question, answer: out.reply.text, topic: intent?.title ?? '', quality: out.reply.quality });

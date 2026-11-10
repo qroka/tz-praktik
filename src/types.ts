@@ -136,6 +136,8 @@ export type MetaReplies = {
   noContext: string[];
   why: string[];
   repeatLast: string[];
+  /** Вопрос из одного слова-уточнения («А летом?») без предмета в контексте. */
+  needSubject: string[];
 };
 
 export type Scenario = {
@@ -161,6 +163,8 @@ export type Scenario = {
   attributeConcepts: string[];
   ambiguities: Ambiguity[];
   topics: Record<string, TopicContext>;
+  /** Ответы на разные стороны одного намерения: намерение → аспект вопроса → варианты. */
+  aspectReplies?: Record<string, Record<string, string[]>>;
 };
 
 // --- Состояние движка ---
@@ -200,6 +204,8 @@ export type EngineState = {
   lastAttributes: string[];
   pending: { ambiguityId: string; concepts: string[] } | null;
   usedVariants: Record<string, number[]>;
+  /** Какие именно формулировки уже задавались по каждому намерению (для настоящих повторов). */
+  askedTexts?: Record<string, string[]>;
   /** Терпение заказчика: падает от общих и повторных вопросов. */
   patience: number;
   counters: EngineCounters;

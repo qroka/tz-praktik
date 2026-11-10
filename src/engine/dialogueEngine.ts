@@ -201,13 +201,23 @@ function withImpatience(state: EngineState, input: DialogueInput, scenario: Scen
   return { text: `${picked.text} ${text}`, state: { ...picked.state, patience: 3 } };
 }
 
+/** Сам вопрос студента: нормализованный текст (для настоящих повторов) и спрошенная сторона темы. */
+type Question = { key: string; aspect: string | null };
+
 /** Ответ на намерение с фактами: следующий шаг раскрытия, предпосылка или повтор. */
-function answerIntent(state: EngineState, intent: Intent, input: DialogueInput, scenario: Scenario, reminder: boolean): Built {
+function answerIntent(state: EngineState, intent: Intent, input: DialogueInput, scenario: Scenario, reminder: boolean, question?: Question): Built {
   const steps = scenario.replies[intent.id] ?? [];
   const asked = state.askedIntents[intent.id] ?? 0;
+  const key = question?.key ?? '';
+  const askedTexts = state.askedTexts?.[intent.id] ?? [];
+  // Повтор — это тот же вопрос теми же словами; другая формулировка той же темы повтором не считается.
+  const sameQuestion = reminder || (key !== '' && askedTexts.includes(key));
+  const aspect = question?.aspect ?? null;
+  const aspectVariants = aspect ? scenario.aspectReplies?.[intent.id]?.[aspect] : undefined;
   let current: EngineState = {
     ...state,
     askedIntents: { ...state.askedIntents, [intent.id]: asked + 1 },
+    askedTexts: key && !askedTexts.includes(key) ? { ...state.askedTexts, [intent.id]: [...askedTexts, key] } : state.askedTexts,
     topic: intent.topic,
     lastIntentId: intent.id,
     pending: null,
@@ -245,7 +255,9 @@ function answerIntent(state: EngineState, intent: Intent, input: DialogueInput, 
       }
     }
     const stepIndex = steps.indexOf(step);
-    const picked = pickVariant(current, input.seed, `${intent.id}:${stepIndex}`, step.variants);
+    const picked = aspectVariants
+      ? pickVariant(current, input.seed, `${intent.id}:a:${aspect}`, aspectVariants)
+      : pickVariant(current, input.seed, `${intent.id}:${stepIndex}`, step.variants);
     current = discloseFacts(picked.state, step.facts);
     current = { ...current, lastFactIds: step.facts };
     const onlyUnknown = step.facts.every((id) => factById(scenario, id)?.customerConfidence === 'unknown');
@@ -264,14 +276,33 @@ function answerIntent(state: EngineState, intent: Intent, input: DialogueInput, 
   // Этот вопрос задан впервые, а сведения уже прозвучали в другом ответе: это не повтор.
   if (asked === 0 && steps.length > 0) {
     const first = steps[0];
-    const picked = pickVariant(current, input.seed, `${intent.id}:0`, first.variants);
+    const picked = aspectVariants
+      ? pickVariant(current, input.seed, `${intent.id}:a:${aspect}`, aspectVariants)
+      : pickVariant(current, input.seed, `${intent.id}:0`, first.variants);
     const facts = steps.flatMap((item) => item.facts);
+    if (intent.kind === 'general') {
+      current = setPatience(bump({ ...picked.state, lastFactIds: facts }, 'general'), -1);
+      const decorated = withImpatience(current, input, scenario, picked.text);
+      return finish(decorated.state, decorated.text, 'general', intent, facts, intent.topic);
+    }
     return finish({ ...picked.state, lastFactIds: facts }, picked.text, 'confirmation', intent, facts, intent.topic);
+  }
+
+  // Другая формулировка той же темы: отвечаем полно и без упрёка, как на новый вопрос.
+  if (!sameQuestion && key) {
+    const variants = aspectVariants ?? steps.flatMap((item) => item.variants);
+    if (variants.length) {
+      // У намерения с одним шагом группа общая с первым ответом: иначе тот же вариант прозвучит дважды подряд.
+      const groupKey = aspect && aspectVariants ? `${intent.id}:a:${aspect}` : steps.length === 1 ? `${intent.id}:0` : `${intent.id}:alt`;
+      const picked = pickVariant(current, input.seed, groupKey, variants);
+      const facts = steps.flatMap((item) => item.facts);
+      return finish({ ...picked.state, lastFactIds: facts }, picked.text, 'confirmation', intent, facts, intent.topic);
+    }
   }
 
   // Всё уже раскрыто: короткий повтор, при явной просьбе напомнить — без упрёка.
   const shortSteps = steps.length ? steps : [];
-  const short = shortSteps.flatMap((item) => item.short);
+  const short = aspectVariants ?? shortSteps.flatMap((item) => item.short);
   const shortKey = `${intent.id}:short`;
   const lastStep = shortSteps[shortSteps.length - 1];
   const shortPicked = pickVariant(current, input.seed, shortKey, short.length ? short : lastStep?.variants ?? ['Мы это уже обсуждали.']);
@@ -417,6 +448,7 @@ export function respond(previous: EngineState, input: DialogueInput, scenario: S
   const severalQuestions = questionParts.length >= 2 && questionParts.every((part) => part.length > 8);
   const questionText = severalQuestions ? questionParts[0] : input.text;
   const analysis = analyze(questionText, scenario);
+  const question: Question = { key: analysis.normalized, aspect: analysis.frame.aspect };
 
   const baseCtx: MatchContext = { topic: input.replyTo?.topic ?? state.topic, lastAttributes: input.replyTo ? [] : state.lastAttributes };
   const rawTop = rankIntents(analysis, baseCtx, scenario)[0];
@@ -450,7 +482,7 @@ export function respond(previous: EngineState, input: DialogueInput, scenario: S
   const frame = analysis.frame;
   const framedAnswer = (id: string) => {
     reason = 'Смысл вопроса: время и предмет';
-    return update(answerIntent({ ...state, pending: null }, scenario.intents.find((item) => item.id === id)!, input, scenario, false));
+    return update(answerIntent({ ...state, pending: null }, scenario.intents.find((item) => item.id === id)!, input, scenario, false, question));
   };
   if (frame.currentPump || frame.responsibility || frame.mixedModes) {
     reason = 'Недостаточно исходных данных / уточнение времени';
@@ -464,6 +496,7 @@ export function respond(previous: EngineState, input: DialogueInput, scenario: S
   if (frame.currentOperation && !analysis.numbers.length) return framedAnswer('purpose_current');
   if (frame.inventory) {
     const result = framedAnswer('object_desc');
+    if (frame.aspect && scenario.aspectReplies?.object_desc?.[frame.aspect]) return result;
     return { ...result, reply: { ...result.reply, text: `${result.reply.text} Полный перечень установленных приборов и исполнительных устройств нужно уточнить на объекте.` } };
   }
   if (frame.goal) return framedAnswer('purpose_goal');
@@ -481,7 +514,7 @@ export function respond(previous: EngineState, input: DialogueInput, scenario: S
 
   if (rawIsService && rawTop.intent.kind === 'social') {
     reason = 'Социальная реплика'; score = rawTop.score;
-    return update(answerIntent({ ...state, pending: null }, rawTop.intent, input, scenario, false));
+    return update(answerIntent({ ...state, pending: null }, rawTop.intent, input, scenario, false, question));
   }
 
   // Вопрос почти дословно совпадает с вопросом из файла преподавателя — отвечаем этой темой.
@@ -491,7 +524,7 @@ export function respond(previous: EngineState, input: DialogueInput, scenario: S
     score = priority.similarity;
     const chosen = priority.intent;
     if (chosen.kind === 'meta') return update(answerMeta(state, chosen, input, scenario, ctxFacts, ctxIntent));
-    return update(answerIntent({ ...state, pending: null }, chosen, input, scenario, REMINDER_CUE.test(analysis.normalized)));
+    return update(answerIntent({ ...state, pending: null }, chosen, input, scenario, REMINDER_CUE.test(analysis.normalized), question));
   }
 
   const ranked = rankIntents(analysis, ctx, scenario);
@@ -502,7 +535,7 @@ export function respond(previous: EngineState, input: DialogueInput, scenario: S
   // 2. Служебные реплики и уточнения не требуют разбора неоднозначности.
   if (topIsStrong && (top.intent.kind === 'social' || top.intent.kind === 'meta') && top.score >= 3) {
     if (top.intent.kind === 'meta') return update(answerMeta(state, top.intent, input, scenario, ctxFacts, ctxIntent));
-    return update(answerIntent({ ...state, pending: null }, top.intent, input, scenario, false));
+    return update(answerIntent({ ...state, pending: null }, top.intent, input, scenario, false, question));
   }
 
   // 3. Неоднозначный предмет — встречный вопрос вместо угадывания.
@@ -514,7 +547,15 @@ export function respond(previous: EngineState, input: DialogueInput, scenario: S
     const similar = matchByExample(analysis, scenario, { priority: false, min: 0.5 });
     if (similar && similar.intent.kind !== 'meta') {
       reason = 'Пример сценария (сходство)'; score = similar.similarity;
-      return update(answerIntent({ ...state, pending: null }, similar.intent, input, scenario, false));
+      return update(answerIntent({ ...state, pending: null }, similar.intent, input, scenario, false, question));
+    }
+    // «А летом?» без предмета в разговоре: переспрашиваем, а не отвечаем, что мы говорим о разном.
+    const fragment = /^(?:а |и )?(летом|зимой|после насоса|до насоса|на входе|на выходе)$/.exec(analysis.normalized);
+    if (fragment) {
+      reason = 'Обрывочный вопрос без предмета';
+      const picked = pickVariant(state, input.seed, 'meta:needSubject', scenario.meta.needSubject);
+      const text = fillTemplate(picked.text, { piece: fragment[1] });
+      return update(finish(bump({ ...picked.state, pending: null }, 'clarifications'), text, 'clarify', null, [], state.topic));
     }
     reason = 'Нет подходящего правила или примера';
     return update(answerFallback(state, input, scenario));
@@ -522,7 +563,7 @@ export function respond(previous: EngineState, input: DialogueInput, scenario: S
 
   // 5. В одном сообщении несколько предметов: отвечаем только на первый.
   const reminder = REMINDER_CUE.test(analysis.normalized);
-  const result = answerIntent(state, top.intent, input, scenario, reminder);
+  const result = answerIntent(state, top.intent, input, scenario, reminder, question);
   const subjects = scenario.subjectConcepts.filter((concept) => analysis.concepts.has(concept));
   const second = ranked.find(
     (item) =>
@@ -540,4 +581,23 @@ export function respond(previous: EngineState, input: DialogueInput, scenario: S
     });
   }
   return update(result);
+}
+
+/**
+ * Один вопрос без истории диалога (проверка в панели преподавателя).
+ * Если вопрос упёрся в «сначала спросите другое», его предпосылки считаются известными:
+ * иначе по одиночному вопросу про допуск температуры никогда не увидеть сам ответ.
+ */
+export function respondIsolated(input: DialogueInput, scenario: Scenario): { state: EngineState; reply: EngineReply } {
+  let base = createEngineState();
+  let out = respond(base, input, scenario);
+  for (let guard = 0; out.reply.quality === 'blocked' && guard < 5; guard++) {
+    const needed = (scenario.replies[out.reply.intentId ?? ''] ?? [])
+      .flatMap((step) => step.facts)
+      .flatMap((id) => factById(scenario, id)?.prerequisites ?? []);
+    if (!needed.length) break;
+    base = discloseFacts(base, needed);
+    out = respond(base, input, scenario);
+  }
+  return out;
 }

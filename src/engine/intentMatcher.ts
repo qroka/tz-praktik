@@ -199,7 +199,9 @@ export function contextConcepts(analysis: Analysis, ctx: MatchContext, scenario:
   const hasAttribute = scenario.attributeConcepts.some((concept) => analysis.concepts.has(concept));
   // Полный вопрос («Какое давление воды до насоса?») признак не наследует — только обрывочное уточнение.
   const elliptical = analysis.tokens.length <= 3 || ELLIPSIS_START.has(analysis.tokens[0]);
-  if (!hasSubject && !hasAttribute && elliptical && analysis.tokens.length <= 6) {
+  // «А по давлению после насоса?» после вопроса об аварии: новый предмет, но признак «авария» остаётся.
+  const switchesSubject = ELLIPSIS_START.has(analysis.tokens[0]);
+  if ((!hasSubject || switchesSubject) && !hasAttribute && elliptical && analysis.tokens.length <= 6) {
     for (const concept of ctx.lastAttributes) carried.add(concept);
   }
   for (const [a, b] of [['beforePump', 'afterPump'], ['beforeAny', 'afterAny'], ['winter', 'summer']]) {

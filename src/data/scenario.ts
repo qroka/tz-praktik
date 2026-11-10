@@ -2,7 +2,7 @@
 import type { Category, Scenario, TzSection } from '../types';
 import { facts } from './facts';
 import { ambiguities, attributeConcepts, conceptCombos, conceptSuppress, intents, lexicon, subjectConcepts, topics } from './intents';
-import { meta, replies } from './responses';
+import { aspectReplies, meta, replies } from './responses';
 
 export const categories: Category[] = [
   { id: 'purpose', title: 'Назначение и цели', direction: 'Зачем заказчику система и что не устраивает сейчас.' },
@@ -62,4 +62,5 @@ export const scenario: Scenario = {
   attributeConcepts,
   ambiguities,
   topics,
+  aspectReplies,
 };
