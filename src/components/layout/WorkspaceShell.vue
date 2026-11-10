@@ -3,7 +3,6 @@ import { computed, ref, watch } from 'vue';
 import { minSectionWords } from '../../data/evaluation';
 import { formatTime, useLayout } from '../../composables/useLayout';
 import { useSession } from '../../composables/useSession';
-import { useTheme } from '../../composables/useTheme';
 import { countWords } from '../../state/learningProgress';
 import type { Attempt, Screen } from '../../types';
 import ChatWorkspace from '../chat/ChatWorkspace.vue';
@@ -17,7 +16,6 @@ import ConfirmDialog from './ConfirmDialog.vue';
 
 const { attempt, scenario, save, summary, reset, finish, applyImport, readProgressFile, notify, exportProgress } = useSession();
 const { layout } = useLayout();
-const { isDark, toggleMode } = useTheme();
 
 const TITLES: Record<Screen, string> = { dialog: 'Диалог', registry: 'Реестр требований', tz: 'Редактор ТЗ', progress: 'Мой прогресс', result: 'Результат' };
 
@@ -71,7 +69,6 @@ function confirmImport() {
     <UDashboardPanel id="main" :ui="{ body: 'p-0 sm:p-0 gap-0 overflow-hidden' }" class="print-flow">
       <template #header>
         <UDashboardNavbar :title="TITLES[screen]" class="no-print">
-          <template #leading><UDashboardSidebarToggle aria-label="Меню" /></template>
           <template #right>
             <span v-if="save.state === 'error'" class="flex items-center gap-1.5 text-sm text-error" role="status" data-testid="save-state">
               <UIcon name="i-lucide-cloud-off" class="size-4" /><span class="hidden sm:inline">Не удалось сохранить</span>
@@ -94,7 +91,6 @@ function confirmImport() {
               data-testid="open-progress"
               @click="progressOpen = true"
             />
-            <UButton color="neutral" variant="ghost" :icon="isDark ? 'i-lucide-sun' : 'i-lucide-moon'" :aria-label="isDark ? 'Включить светлую тему' : 'Включить тёмную тему'" @click="toggleMode" />
           </template>
         </UDashboardNavbar>
       </template>

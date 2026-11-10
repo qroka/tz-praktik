@@ -315,7 +315,7 @@ test.describe('10. Мобильная компоновка 375 px', () => {
     await page.getByRole('dialog').getByRole('button', { name: 'Показать в переписке' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Меню', exact: true }).click();
+    await page.getByRole('button', { name: 'Открыть боковую панель' }).click();
     await page.getByRole('button', { name: /Редактор ТЗ/ }).click();
     await page.getByLabel('Раздел ТЗ').click();
     await page.getByRole('option', { name: /^6\./ }).click();
@@ -330,12 +330,12 @@ test.describe('10. Мобильная компоновка 375 px', () => {
 test('Тема и режим переключаются и сохраняются', async ({ page }) => {
   await start(page, 'Тема');
   await expect(page.locator('html')).toHaveClass(/dark/);
-  await page.getByRole('button', { name: 'Включить светлую тему' }).click();
+  await page.getByRole('button', { name: 'Меню попытки' }).click();
+  await page.getByRole('tab', { name: 'Светлая' }).click();
   await expect(page.locator('html')).not.toHaveClass(/dark/);
 
-  await page.getByRole('button', { name: 'Меню попытки' }).click();
-  await page.getByRole('menuitem', { name: 'Тема оформления' }).click();
-  await page.getByRole('menuitem', { name: 'Небо' }).click();
+  await page.getByRole('menuitem', { name: 'По умолчанию' }).click();
+  await page.getByRole('menuitemcheckbox', { name: 'Небо' }).click();
   await expect(page.locator('html')).toHaveCSS('--ui-radius', '0.75rem');
 
   await page.reload();

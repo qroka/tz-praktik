@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { watch } from 'vue';
+import { ru } from '@nuxt/ui/locale';
 import { useSession } from './composables/useSession';
 import { useTheme } from './composables/useTheme';
 import WelcomeScreen from './components/onboarding/WelcomeScreen.vue';
@@ -23,7 +24,7 @@ watch(notice, (value) => {
 </script>
 
 <template>
-  <UApp :toaster="{ position: 'top-center' }">
+  <UApp :locale="ru" :toaster="{ position: 'top-center' }">
     <WorkspaceShell v-if="attempt" />
     <WelcomeScreen v-else />
   </UApp>

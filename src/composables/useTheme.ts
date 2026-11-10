@@ -10,7 +10,9 @@ const mode = useColorMode({ storageKey: 'tz-praktikum:color-mode', initialValue:
 export function useTheme() {
   const preset = computed(() => THEME_PRESETS.find((item) => item.id === themeId.value) ?? THEME_PRESETS[0]!);
   const css = computed(() => themeCss(preset.value));
-  const isDark = computed(() => mode.value === 'dark');
+  const isDark = computed(() => mode.state.value === 'dark');
+  /** Выбор пользователя: светлая, тёмная или как в системе. */
+  const preference = computed(() => mode.store.value);
 
   /** Вызывается один раз в корне приложения. */
   function install() {
@@ -25,9 +27,10 @@ export function useTheme() {
     presets: THEME_PRESETS,
     preset,
     isDark,
+    preference,
     install,
     selectPreset: (id: string) => (themeId.value = id),
-    setMode: (value: 'light' | 'dark') => (mode.value = value),
+    setMode: (value: 'light' | 'dark' | 'auto') => (mode.value = value),
     toggleMode: () => (mode.value = isDark.value ? 'light' : 'dark'),
   };
 }

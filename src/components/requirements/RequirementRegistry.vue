@@ -107,7 +107,7 @@ function onSource(messageId: string) {
       <UButton :color="onlyConflict ? 'primary' : 'neutral'" :variant="onlyConflict ? 'soft' : 'outline'" icon="i-lucide-triangle-alert" :label="`Противоречия: ${conflictCount}`" :aria-pressed="onlyConflict" @click="onlyConflict = !onlyConflict" />
     </div>
 
-    <div :class="props.embedded ? 'space-y-5' : 'overflow-y-auto -mr-2 min-h-0 flex-1 space-y-5 pr-2'">
+    <div :class="props.embedded ? 'space-y-5' : '-m-1 min-h-0 flex-1 space-y-5 overflow-y-auto p-1'">
       <div v-if="items.length === 0" data-testid="registry-empty">
         <UEmpty icon="i-lucide-clipboard-list" title="Пока нет требований" description="Сохраните важные сведения из ответов заказчика, чтобы использовать их при подготовке ТЗ." />
       </div>

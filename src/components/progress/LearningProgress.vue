@@ -44,7 +44,7 @@ const { summary, attempt } = useSession();
 
     <USeparator />
     <h3 class="text-sm font-semibold">Изученные направления</h3>
-    <CategoryProgress :rows="summary.rows" class="overflow-y-auto -mr-2 min-h-24 flex-1 pr-2" />
+    <CategoryProgress :rows="summary.rows" class="-m-1 min-h-24 flex-1 overflow-y-auto p-1" />
     <LearningHint v-if="!attempt?.finishedAt" />
   </section>
 </template>

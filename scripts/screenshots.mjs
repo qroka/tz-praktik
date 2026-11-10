@@ -44,7 +44,7 @@ for (const [width, height] of SIZES) {
   const screens = [[/Реестр требований/, 'registry'], [/Редактор ТЗ/, 'tz'], [/Мой прогресс/, 'progress']];
   for (const [label, name] of screens) {
     // Уже 1024 px боковая панель выезжает по кнопке меню.
-    if (width < 1024) await page.getByRole('button', { name: 'Меню', exact: true }).click();
+    if (width < 1024) await page.getByRole('button', { name: 'Открыть боковую панель' }).click();
     await page.getByRole('button', { name: label }).first().click();
     await page.waitForTimeout(250);
     await shot(name);
