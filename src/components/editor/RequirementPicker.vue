@@ -16,7 +16,7 @@ const categoryTitle = (id: string) => scenario.categories.find((item) => item.id
 const list = computed(() => (attempt.value?.requirements ?? []).filter((item) => showAll.value || section.value.categories.includes(item.category)));
 const items = computed(() =>
   list.value.map((item) => {
-    const already = item.movedToSections?.includes(props.sectionId) ?? false;
+    const already = (attempt.value?.tz[props.sectionId] ?? '').includes(item.text);
     const other = item.movedToSections?.length && !already ? ` · перенесено в раздел ${item.movedToSections.join(', ')}` : '';
     return {
       label: item.text,

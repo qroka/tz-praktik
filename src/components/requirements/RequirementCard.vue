@@ -10,6 +10,8 @@ defineProps<{
   selected: boolean;
   /** Номер раздела ТЗ, куда запись переносится кнопкой; без него кнопки нет. */
   tzSection?: number;
+  /** Текст записи уже есть в выбранном разделе: повторно добавлять не нужно. */
+  inTzSection?: boolean;
 }>();
 const emit = defineEmits<{
   pick: [];
@@ -71,8 +73,8 @@ const emit = defineEmits<{
         color="primary"
         variant="soft"
         icon="i-lucide-list-plus"
-        :disabled="item.movedToSections?.includes(tzSection)"
-        :label="item.movedToSections?.includes(tzSection) ? `Уже в разделе ${tzSection}` : `В раздел ${tzSection}`"
+        :disabled="inTzSection"
+        :label="inTzSection ? `Уже в разделе ${tzSection}` : `В раздел ${tzSection}`"
         data-testid="add-to-tz"
         @click="emit('addToTz')"
       />

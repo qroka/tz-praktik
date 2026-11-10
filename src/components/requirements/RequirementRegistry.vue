@@ -83,6 +83,9 @@ function confirmDelete() {
   if (id) update((current) => removeRequirement(current, id));
   deletingId.value = null;
 }
+// Запись считается добавленной, пока её текст есть в разделе: если студент стёр строку, её можно добавить снова.
+const inSection = (text: string) => Boolean(props.tzSection && (attempt.value?.tz[props.tzSection] ?? '').includes(text));
+
 function addToTz(id: string) {
   const section = props.tzSection;
   if (!section) return;
@@ -130,6 +133,7 @@ function onSource(messageId: string) {
           :merge-mode="mergeMode"
           :selected="picked.includes(item.id)"
           :tz-section="props.tzSection"
+          :in-tz-section="inSection(item.text)"
           @add-to-tz="addToTz(item.id)"
           @pick="togglePick(item.id)"
           @edit="openEdit(item.id)"
