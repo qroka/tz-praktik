@@ -1,0 +1,2 @@
+{"n":1,"question":"Как будем управлять насосом?","reply":"Управлять им надо через преобразователь частоты.","quality":"useful","intentId":"pump_control","factIds":["pump_vfd"],"newFacts":["pump_vfd"],"ms":1206}
+{"n":2,"question":"А что сейчас стоит на насосе?","reply":"Центробежный насос стоит, подаёт воду на мойку. По характеристикам спрашивайте отдельно.","quality":"general","intentId":"about_pump","factIds":["pump_type"],"newFacts":["pump_type"],"ms":1715}

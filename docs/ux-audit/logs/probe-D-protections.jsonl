@@ -1,0 +1,4 @@
+{"n":1,"question":"Какие нужны защиты?","reply":"Аварии бывают разные. Вас интересует порог срабатывания по какому параметру?","quality":"clarify","intentId":null,"factIds":[],"newFacts":[],"ms":1545}
+{"n":2,"question":"А при перегреве что?","reply":"При 75 градусах нагрев обязательно надо прекращать.","quality":"useful","intentId":"temp_alarm","factIds":["temp_alarm"],"newFacts":["temp_alarm"],"ms":1204}
+{"n":3,"question":"А если воды нет?","reply":"Такого я у нас не припомню. Поясните, что имеете в виду. Может быть, начнём с темы «Назначение и цели»?","quality":"unrecognized","intentId":null,"factIds":[],"newFacts":[],"ms":1882}
+{"n":4,"question":"А по давлению?","reply":"Вы спрашиваете про давление воды до насоса, после насоса или про давление теплоносителя?","quality":"clarify","intentId":null,"factIds":[],"newFacts":[],"ms":1722}

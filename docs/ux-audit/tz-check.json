@@ -1,0 +1,37 @@
+{
+  "ivan": {
+    "numericTotal": 39,
+    "numericGot": 20,
+    "numericGotInTz": 20,
+    "mandatoryTotal": 86,
+    "inTz": 65,
+    "forgotten": [
+      "Реакция на отсутствие циркуляции"
+    ],
+    "neverGot": 40,
+    "markedUnknown": 16,
+    "proposals": 7
+  },
+  "weak": {
+    "numericTotal": 39,
+    "numericGot": 19,
+    "numericGotInTz": 19,
+    "mandatoryTotal": 86,
+    "inTz": 62,
+    "forgotten": [],
+    "neverGot": 42,
+    "markedUnknown": 18,
+    "proposals": 4
+  },
+  "strong": {
+    "numericTotal": 39,
+    "numericGot": 16,
+    "numericGotInTz": 16,
+    "mandatoryTotal": 86,
+    "inTz": 62,
+    "forgotten": [],
+    "neverGot": 41,
+    "markedUnknown": 18,
+    "proposals": 7
+  }
+}

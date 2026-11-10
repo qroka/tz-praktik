@@ -1,0 +1,1 @@
+{"n":1,"question":"Какая температура должна быть на выходе и насколько она может отклоняться?","reply":"Обычно нам нужно около 60 градусов. Плюс-минус 2 градуса нас устраивает.","quality":"useful","intentId":"temp_tolerance","factIds":["temp_tolerance","temp_setpoint"],"newFacts":["temp_setpoint","temp_tolerance"],"ms":1511}

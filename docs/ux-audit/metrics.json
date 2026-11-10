@@ -1,0 +1,706 @@
+{
+  "ivan": {
+    "summary": {
+      "messages": 70,
+      "byQuality": {
+        "social": 2,
+        "useful": 39,
+        "unrecognized": 4,
+        "general": 4,
+        "confirmation": 16,
+        "unknown_found": 4,
+        "clarify": 1
+      },
+      "usefulShare": 0.63,
+      "recognizedShare": 0.94,
+      "noNewInfo": 26,
+      "factsDisclosed": 51,
+      "mandatoryGot": 46,
+      "mandatoryTotal": 86,
+      "mandatoryCoverage": 0.53,
+      "unknownsFound": 4,
+      "unknownsTotal": 14,
+      "mandatoryAfter20": 10,
+      "mandatoryAfter40": 27
+    },
+    "directions": [
+      {
+        "direction": "Назначение и общая картина",
+        "questions": 8,
+        "useful": 3,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 5,
+        "facts": 3,
+        "mandatoryGot": 3,
+        "mandatoryTotal": 4,
+        "mandatoryMissing": [
+          "Наименование системы"
+        ]
+      },
+      {
+        "direction": "Температура и нагрев",
+        "questions": 9,
+        "useful": 4,
+        "unrecognized": 2,
+        "clarify": 0,
+        "noNewInfo": 5,
+        "facts": 4,
+        "mandatoryGot": 4,
+        "mandatoryTotal": 4,
+        "mandatoryMissing": []
+      },
+      {
+        "direction": "Давление воды",
+        "questions": 4,
+        "useful": 3,
+        "unrecognized": 1,
+        "clarify": 0,
+        "noNewInfo": 1,
+        "facts": 3,
+        "mandatoryGot": 3,
+        "mandatoryTotal": 3,
+        "mandatoryMissing": []
+      },
+      {
+        "direction": "Расход и циркуляция",
+        "questions": 1,
+        "useful": 1,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 0,
+        "facts": 1,
+        "mandatoryGot": 1,
+        "mandatoryTotal": 3,
+        "mandatoryMissing": [
+          "Максимальный текущий расход",
+          "Отображение расхода"
+        ]
+      },
+      {
+        "direction": "Насос и управление",
+        "questions": 6,
+        "useful": 4,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 2,
+        "facts": 4,
+        "mandatoryGot": 4,
+        "mandatoryTotal": 7,
+        "mandatoryMissing": [
+          "Диапазон частоты преобразователя",
+          "Питание двигателя насоса",
+          "Напор насоса"
+        ]
+      },
+      {
+        "direction": "Теплообменник и теплоноситель",
+        "questions": 3,
+        "useful": 2,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 1,
+        "facts": 2,
+        "mandatoryGot": 2,
+        "mandatoryTotal": 10,
+        "mandatoryMissing": [
+          "Тип теплообменника",
+          "Мощность теплообменника",
+          "Максимальное давление теплообменника",
+          "Максимальная температура теплообменника",
+          "Присоединение по воде",
+          "Присоединение по теплоносителю",
+          "Температура обратки теплоносителя",
+          "Максимальное давление теплоносителя"
+        ]
+      },
+      {
+        "direction": "Клапаны и исполнительные механизмы",
+        "questions": 3,
+        "useful": 2,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 1,
+        "facts": 2,
+        "mandatoryGot": 1,
+        "mandatoryTotal": 5,
+        "mandatoryMissing": [
+          "Характер регулирования клапаном",
+          "Клапан при потере воздуха",
+          "Сжатый воздух КИП",
+          "Перепад давления на клапане"
+        ]
+      },
+      {
+        "direction": "Режимы работы",
+        "questions": 6,
+        "useful": 3,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 3,
+        "facts": 5,
+        "mandatoryGot": 5,
+        "mandatoryTotal": 6,
+        "mandatoryMissing": [
+          "Ограничение режима обслуживания"
+        ]
+      },
+      {
+        "direction": "Предупреждения и защиты",
+        "questions": 12,
+        "useful": 10,
+        "unrecognized": 0,
+        "clarify": 1,
+        "noNewInfo": 2,
+        "facts": 10,
+        "mandatoryGot": 10,
+        "mandatoryTotal": 20,
+        "mandatoryMissing": [
+          "Предупреждение по давлению после насоса",
+          "Выдержка времени по расходу",
+          "Запрет пуска по давлению до насоса",
+          "Аварийный останов: насос",
+          "Аварийный останов: клапан",
+          "Аварийный останов: нагрев",
+          "Аварийный останов: причина",
+          "Запрет автоматического перезапуска",
+          "Порядок повторного запуска",
+          "Потеря сигнала датчика давления после насоса"
+        ]
+      },
+      {
+        "direction": "Датчики и контролируемые параметры",
+        "questions": 0,
+        "useful": 0,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 0,
+        "facts": 0,
+        "mandatoryGot": 0,
+        "mandatoryTotal": 0,
+        "mandatoryMissing": []
+      },
+      {
+        "direction": "Операторский интерфейс",
+        "questions": 5,
+        "useful": 4,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 1,
+        "facts": 9,
+        "mandatoryGot": 8,
+        "mandatoryTotal": 14,
+        "mandatoryMissing": [
+          "Изменение уставок",
+          "Текстовые сообщения",
+          "Журнал аварий",
+          "Дата и время аварии",
+          "Тренд температуры",
+          "Тренд давления"
+        ]
+      },
+      {
+        "direction": "Электропитание и условия",
+        "questions": 9,
+        "useful": 4,
+        "unrecognized": 1,
+        "clarify": 0,
+        "noNewInfo": 5,
+        "facts": 4,
+        "mandatoryGot": 3,
+        "mandatoryTotal": 7,
+        "mandatoryMissing": [
+          "Доступное питание",
+          "Цепи автоматики",
+          "Взрывоопасность",
+          "Расстояние до шкафа"
+        ]
+      },
+      {
+        "direction": "Оборудование и документация",
+        "questions": 4,
+        "useful": 4,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 0,
+        "facts": 4,
+        "mandatoryGot": 2,
+        "mandatoryTotal": 3,
+        "mandatoryMissing": [
+          "Выбор моделей"
+        ]
+      }
+    ]
+  },
+  "weak": {
+    "summary": {
+      "messages": 78,
+      "byQuality": {
+        "useful": 36,
+        "confirmation": 21,
+        "general": 5,
+        "unrecognized": 8,
+        "unknown_found": 3,
+        "social": 1,
+        "clarify": 3,
+        "correction": 1
+      },
+      "usefulShare": 0.51,
+      "recognizedShare": 0.9,
+      "noNewInfo": 38,
+      "factsDisclosed": 47,
+      "mandatoryGot": 44,
+      "mandatoryTotal": 86,
+      "mandatoryCoverage": 0.51,
+      "unknownsFound": 3,
+      "unknownsTotal": 14,
+      "mandatoryAfter20": 10,
+      "mandatoryAfter40": 18
+    },
+    "directions": [
+      {
+        "direction": "Назначение и общая картина",
+        "questions": 12,
+        "useful": 3,
+        "unrecognized": 4,
+        "clarify": 0,
+        "noNewInfo": 9,
+        "facts": 3,
+        "mandatoryGot": 3,
+        "mandatoryTotal": 4,
+        "mandatoryMissing": [
+          "Наименование системы"
+        ]
+      },
+      {
+        "direction": "Температура и нагрев",
+        "questions": 10,
+        "useful": 2,
+        "unrecognized": 0,
+        "clarify": 1,
+        "noNewInfo": 8,
+        "facts": 2,
+        "mandatoryGot": 2,
+        "mandatoryTotal": 4,
+        "mandatoryMissing": [
+          "Температура входной воды зимой",
+          "Температура входной воды летом"
+        ]
+      },
+      {
+        "direction": "Давление воды",
+        "questions": 4,
+        "useful": 3,
+        "unrecognized": 0,
+        "clarify": 1,
+        "noNewInfo": 1,
+        "facts": 3,
+        "mandatoryGot": 3,
+        "mandatoryTotal": 3,
+        "mandatoryMissing": []
+      },
+      {
+        "direction": "Расход и циркуляция",
+        "questions": 1,
+        "useful": 1,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 0,
+        "facts": 1,
+        "mandatoryGot": 1,
+        "mandatoryTotal": 3,
+        "mandatoryMissing": [
+          "Максимальный текущий расход",
+          "Отображение расхода"
+        ]
+      },
+      {
+        "direction": "Насос и управление",
+        "questions": 7,
+        "useful": 3,
+        "unrecognized": 1,
+        "clarify": 0,
+        "noNewInfo": 4,
+        "facts": 3,
+        "mandatoryGot": 3,
+        "mandatoryTotal": 7,
+        "mandatoryMissing": [
+          "Диапазон частоты преобразователя",
+          "Питание двигателя насоса",
+          "Номинальная подача насоса",
+          "Напор насоса"
+        ]
+      },
+      {
+        "direction": "Теплообменник и теплоноситель",
+        "questions": 9,
+        "useful": 5,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 4,
+        "facts": 5,
+        "mandatoryGot": 5,
+        "mandatoryTotal": 10,
+        "mandatoryMissing": [
+          "Тип теплообменника",
+          "Максимальное давление теплообменника",
+          "Присоединение по воде",
+          "Присоединение по теплоносителю",
+          "Максимальное давление теплоносителя"
+        ]
+      },
+      {
+        "direction": "Клапаны и исполнительные механизмы",
+        "questions": 3,
+        "useful": 2,
+        "unrecognized": 1,
+        "clarify": 0,
+        "noNewInfo": 1,
+        "facts": 2,
+        "mandatoryGot": 1,
+        "mandatoryTotal": 5,
+        "mandatoryMissing": [
+          "Характер регулирования клапаном",
+          "Клапан при потере воздуха",
+          "Сжатый воздух КИП",
+          "Перепад давления на клапане"
+        ]
+      },
+      {
+        "direction": "Режимы работы",
+        "questions": 7,
+        "useful": 4,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 3,
+        "facts": 6,
+        "mandatoryGot": 6,
+        "mandatoryTotal": 6,
+        "mandatoryMissing": []
+      },
+      {
+        "direction": "Предупреждения и защиты",
+        "questions": 12,
+        "useful": 8,
+        "unrecognized": 2,
+        "clarify": 1,
+        "noNewInfo": 4,
+        "facts": 9,
+        "mandatoryGot": 9,
+        "mandatoryTotal": 20,
+        "mandatoryMissing": [
+          "Предупреждение по давлению после насоса",
+          "Порог отсутствия циркуляции",
+          "Выдержка времени по расходу",
+          "Реакция на отсутствие циркуляции",
+          "Запрет пуска по давлению до насоса",
+          "Аварийный останов: нагрев",
+          "Аварийный останов: причина",
+          "Запрет автоматического перезапуска",
+          "Порядок повторного запуска",
+          "Потеря сигнала датчика давления после насоса",
+          "Потеря сигнала расходомера"
+        ]
+      },
+      {
+        "direction": "Датчики и контролируемые параметры",
+        "questions": 1,
+        "useful": 0,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 1,
+        "facts": 0,
+        "mandatoryGot": 0,
+        "mandatoryTotal": 0,
+        "mandatoryMissing": []
+      },
+      {
+        "direction": "Операторский интерфейс",
+        "questions": 6,
+        "useful": 5,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 1,
+        "facts": 9,
+        "mandatoryGot": 8,
+        "mandatoryTotal": 14,
+        "mandatoryMissing": [
+          "На экране: положение клапана",
+          "На экране: режим работы",
+          "Текстовые сообщения",
+          "Дата и время аварии",
+          "Тренд температуры",
+          "Тренд давления"
+        ]
+      },
+      {
+        "direction": "Электропитание и условия",
+        "questions": 4,
+        "useful": 3,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 1,
+        "facts": 3,
+        "mandatoryGot": 3,
+        "mandatoryTotal": 7,
+        "mandatoryMissing": [
+          "Цепи автоматики",
+          "Взрывоопасность",
+          "Степень защиты приборов",
+          "Расстояние до шкафа"
+        ]
+      },
+      {
+        "direction": "Оборудование и документация",
+        "questions": 2,
+        "useful": 1,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 1,
+        "facts": 1,
+        "mandatoryGot": 0,
+        "mandatoryTotal": 3,
+        "mandatoryMissing": [
+          "Класс оборудования",
+          "Контроллер",
+          "Выбор моделей"
+        ]
+      }
+    ]
+  },
+  "strong": {
+    "summary": {
+      "messages": 60,
+      "byQuality": {
+        "useful": 35,
+        "confirmation": 14,
+        "general": 4,
+        "unrecognized": 2,
+        "correction": 2,
+        "unknown_found": 3
+      },
+      "usefulShare": 0.67,
+      "recognizedShare": 0.97,
+      "noNewInfo": 20,
+      "factsDisclosed": 49,
+      "mandatoryGot": 45,
+      "mandatoryTotal": 86,
+      "mandatoryCoverage": 0.52,
+      "unknownsFound": 3,
+      "unknownsTotal": 14,
+      "mandatoryAfter20": 10,
+      "mandatoryAfter40": 30
+    },
+    "directions": [
+      {
+        "direction": "Назначение и общая картина",
+        "questions": 7,
+        "useful": 2,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 5,
+        "facts": 2,
+        "mandatoryGot": 2,
+        "mandatoryTotal": 4,
+        "mandatoryMissing": [
+          "Наименование системы",
+          "Состав узла"
+        ]
+      },
+      {
+        "direction": "Температура и нагрев",
+        "questions": 5,
+        "useful": 2,
+        "unrecognized": 1,
+        "clarify": 0,
+        "noNewInfo": 3,
+        "facts": 2,
+        "mandatoryGot": 2,
+        "mandatoryTotal": 4,
+        "mandatoryMissing": [
+          "Температура входной воды зимой",
+          "Температура входной воды летом"
+        ]
+      },
+      {
+        "direction": "Давление воды",
+        "questions": 3,
+        "useful": 2,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 1,
+        "facts": 2,
+        "mandatoryGot": 2,
+        "mandatoryTotal": 3,
+        "mandatoryMissing": [
+          "Давление до насоса в норме"
+        ]
+      },
+      {
+        "direction": "Расход и циркуляция",
+        "questions": 0,
+        "useful": 0,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 0,
+        "facts": 0,
+        "mandatoryGot": 0,
+        "mandatoryTotal": 3,
+        "mandatoryMissing": [
+          "Рабочий расход",
+          "Максимальный текущий расход",
+          "Отображение расхода"
+        ]
+      },
+      {
+        "direction": "Насос и управление",
+        "questions": 8,
+        "useful": 5,
+        "unrecognized": 1,
+        "clarify": 0,
+        "noNewInfo": 3,
+        "facts": 5,
+        "mandatoryGot": 5,
+        "mandatoryTotal": 7,
+        "mandatoryMissing": [
+          "Диапазон частоты преобразователя",
+          "Напор насоса"
+        ]
+      },
+      {
+        "direction": "Теплообменник и теплоноситель",
+        "questions": 5,
+        "useful": 3,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 2,
+        "facts": 3,
+        "mandatoryGot": 3,
+        "mandatoryTotal": 10,
+        "mandatoryMissing": [
+          "Мощность теплообменника",
+          "Максимальное давление теплообменника",
+          "Присоединение по воде",
+          "Присоединение по теплоносителю",
+          "Температура подачи теплоносителя",
+          "Температура обратки теплоносителя",
+          "Максимальное давление теплоносителя"
+        ]
+      },
+      {
+        "direction": "Клапаны и исполнительные механизмы",
+        "questions": 4,
+        "useful": 2,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 2,
+        "facts": 2,
+        "mandatoryGot": 2,
+        "mandatoryTotal": 5,
+        "mandatoryMissing": [
+          "Клапан при потере воздуха",
+          "Сжатый воздух КИП",
+          "Перепад давления на клапане"
+        ]
+      },
+      {
+        "direction": "Режимы работы",
+        "questions": 5,
+        "useful": 3,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 2,
+        "facts": 5,
+        "mandatoryGot": 5,
+        "mandatoryTotal": 6,
+        "mandatoryMissing": [
+          "Ограничение режима обслуживания"
+        ]
+      },
+      {
+        "direction": "Предупреждения и защиты",
+        "questions": 11,
+        "useful": 10,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 1,
+        "facts": 12,
+        "mandatoryGot": 12,
+        "mandatoryTotal": 20,
+        "mandatoryMissing": [
+          "Предупреждение по давлению после насоса",
+          "Порог отсутствия циркуляции",
+          "Выдержка времени по расходу",
+          "Реакция на отсутствие циркуляции",
+          "Запрет пуска по давлению до насоса",
+          "Запрет автоматического перезапуска",
+          "Потеря сигнала датчика давления после насоса",
+          "Потеря сигнала расходомера"
+        ]
+      },
+      {
+        "direction": "Датчики и контролируемые параметры",
+        "questions": 0,
+        "useful": 0,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 0,
+        "facts": 0,
+        "mandatoryGot": 0,
+        "mandatoryTotal": 0,
+        "mandatoryMissing": []
+      },
+      {
+        "direction": "Операторский интерфейс",
+        "questions": 7,
+        "useful": 6,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 1,
+        "facts": 11,
+        "mandatoryGot": 9,
+        "mandatoryTotal": 14,
+        "mandatoryMissing": [
+          "Текстовые сообщения",
+          "Журнал аварий",
+          "Дата и время аварии",
+          "Тренд температуры",
+          "Тренд давления"
+        ]
+      },
+      {
+        "direction": "Электропитание и условия",
+        "questions": 4,
+        "useful": 4,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 0,
+        "facts": 4,
+        "mandatoryGot": 3,
+        "mandatoryTotal": 7,
+        "mandatoryMissing": [
+          "Доступное питание",
+          "Взрывоопасность",
+          "Степень защиты приборов",
+          "Расстояние до шкафа"
+        ]
+      },
+      {
+        "direction": "Оборудование и документация",
+        "questions": 1,
+        "useful": 1,
+        "unrecognized": 0,
+        "clarify": 0,
+        "noNewInfo": 0,
+        "facts": 1,
+        "mandatoryGot": 0,
+        "mandatoryTotal": 3,
+        "mandatoryMissing": [
+          "Класс оборудования",
+          "Контроллер",
+          "Выбор моделей"
+        ]
+      }
+    ]
+  }
+}

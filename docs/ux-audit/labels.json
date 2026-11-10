@@ -1,0 +1,13 @@
+{
+  "_legend": {
+    "misrec": "Ошибка распознавания: сведения в сценарии есть, но ответ не на вопрос (другая тема, предыдущая тема, общий ответ)",
+    "absent": "В сценарии нет таких сведений, а заказчик отвечает невпопад вместо честного «не знаю / не определено / предложите»",
+    "claim": "Вопрос с числом или вариантами принят за утверждение студента («я такого не говорил», «да, так и есть»)",
+    "general": "Вопрос о составе узла понят как «расскажите всё» — пересказ цели вместо схемы",
+    "swallow": "Приветствие или «Хорошо.» в начале сообщения съели сам вопрос",
+    "legit": "Уместный встречный вопрос или повтор по вине студента — учебно оправдано"
+  },
+  "ivan": { "1": "swallow", "5": "swallow", "6": "absent", "7": "general", "8": "misrec", "10": "absent", "13": "misrec", "14": "misrec", "17": "misrec", "22": "claim", "32": "misrec", "34": "legit", "38": "absent", "39": "absent", "40": "legit", "44": "absent", "46": "claim", "52": "misrec", "54": "misrec", "55": "misrec", "56": "absent", "60": "absent", "63": "legit", "66": "misrec", "69": "absent", "70": "misrec" },
+  "weak": { "3": "absent", "4": "legit", "5": "general", "6": "misrec", "7": "general", "9": "absent", "10": "absent", "15": "absent", "16": "absent", "18": "misrec", "23": "misrec", "24": "misrec", "26": "claim", "28": "claim", "30": "absent", "34": "misrec", "35": "misrec", "37": "misrec", "38": "swallow", "39": "legit", "42": "misrec", "44": "legit", "48": "absent", "49": "legit", "50": "misrec", "51": "legit", "52": "legit", "53": "misrec", "56": "claim", "58": "misrec", "59": "legit", "67": "misrec", "68": "misrec", "70": "absent", "71": "absent", "72": "legit", "76": "absent", "78": "misrec" },
+  "strong": { "2": "misrec", "4": "absent", "5": "general", "6": "misrec", "9": "absent", "11": "claim", "13": "misrec", "14": "misrec", "17": "claim", "21": "claim", "25": "misrec", "28": "absent", "29": "legit", "36": "absent", "37": "legit", "41": "misrec", "45": "absent", "51": "claim", "52": "misrec", "55": "absent" }
+}

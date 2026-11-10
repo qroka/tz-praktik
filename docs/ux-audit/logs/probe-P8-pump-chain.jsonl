@@ -1,0 +1,5 @@
+{"n":1,"question":"Расскажите про насос, который у вас стоит","reply":"Насос обычный центробежный. Что конкретно про него вам нужно?","quality":"general","intentId":"about_pump","factIds":["pump_type"],"newFacts":["pump_type"],"ms":1368}
+{"n":2,"question":"А какие у него характеристики?","reply":"Я механик, а не программист. Скажите своими словами, что именно нужно. Если не знаете, что спросить, посмотрите в сторону темы «Назначение и цели».","quality":"unrecognized","intentId":null,"factIds":[],"newFacts":[],"ms":1901}
+{"n":3,"question":"А какая мощность?","reply":"По табличке 2,2 киловатта.","quality":"useful","intentId":"pump_power","factIds":["pump_power"],"newFacts":["pump_power"],"ms":845}
+{"n":4,"question":"А сколько он качает?","reply":"Вопрос какой-то размытый. Назовите параметр или ситуацию. Кстати, про «Назначение и цели» мы ещё не говорили.","quality":"unrecognized","intentId":null,"factIds":[],"newFacts":[],"ms":1889}
+{"n":5,"question":"А как им сейчас управляют?","reply":"Автоматики как таковой нет, всё держится на операторе.","quality":"useful","intentId":"purpose_current","factIds":["purpose_manual"],"newFacts":["purpose_manual"],"ms":1236}
