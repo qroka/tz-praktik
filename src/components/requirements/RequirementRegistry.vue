@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useSession } from '../../composables/useSession';
-import { addRequirement, mergeRequirements, removeRequirement, updateRequirement } from '../../state/attempt';
+import { addRequirement, mergeRequirements, moveRequirementsToSection, removeRequirement, updateRequirement } from '../../state/attempt';
 import ConfirmDialog from '../layout/ConfirmDialog.vue';
 import RequirementCard from './RequirementCard.vue';
 import RequirementForm, { type RequirementDraft } from './RequirementForm.vue';
 
 // embedded — быстрый просмотр в боковой панели чата.
-const props = defineProps<{ embedded?: boolean }>();
+const props = defineProps<{ embedded?: boolean; tzSection?: number }>();
 const emit = defineEmits<{ source: [] }>();
 
 const { attempt, scenario, readOnly, update, showSource, notify } = useSession();
@@ -83,6 +83,12 @@ function confirmDelete() {
   if (id) update((current) => removeRequirement(current, id));
   deletingId.value = null;
 }
+function addToTz(id: string) {
+  const section = props.tzSection;
+  if (!section) return;
+  update((current) => moveRequirementsToSection(current, section, [id]));
+  notify('success', `Добавлено в раздел ${section}`, 'Перепишите черновик своими словами.');
+}
 function onSource(messageId: string) {
   showSource(messageId);
   emit('source');
@@ -97,12 +103,12 @@ function onSource(messageId: string) {
       </h2>
       <template v-if="!readOnly">
         <UTooltip v-if="items.length >= 2" text="Объединить несколько записей в одну"><UButton :color="mergeMode ? 'primary' : 'neutral'" :variant="mergeMode ? 'solid' : 'outline'" icon="i-lucide-merge" label="Объединить" :aria-pressed="mergeMode" @click="mergeMode ? closeMerge() : (mergeMode = true)" /></UTooltip>
-        <UTooltip text="Добавить требование вручную"><UButton icon="i-lucide-plus" label="Добавить" @click="openAdd" /></UTooltip>
+        <UTooltip v-if="!props.tzSection" text="Добавить требование вручную"><UButton icon="i-lucide-plus" label="Добавить" @click="openAdd" /></UTooltip>
       </template>
     </div>
 
     <div v-if="items.length > 0" class="flex flex-wrap items-center gap-2" role="group" aria-label="Фильтры реестра">
-      <USelect v-model="category" :items="categoryItems" aria-label="Фильтр по категории" class="w-full sm:w-64" />
+      <USelect v-model="category" :items="categoryItems" aria-label="Фильтр по категории" class="w-full" />
       <UTooltip text="Показать только записи, которые нужно уточнить"><UButton :color="onlyClarify ? 'primary' : 'neutral'" :variant="onlyClarify ? 'soft' : 'outline'" icon="i-lucide-circle-help" :label="`Уточнить: ${clarifyCount}`" :aria-pressed="onlyClarify" @click="onlyClarify = !onlyClarify" /></UTooltip>
       <UTooltip text="Показать только записи с противоречиями"><UButton :color="onlyConflict ? 'primary' : 'neutral'" :variant="onlyConflict ? 'soft' : 'outline'" icon="i-lucide-triangle-alert" :label="`Противоречия: ${conflictCount}`" :aria-pressed="onlyConflict" @click="onlyConflict = !onlyConflict" /></UTooltip>
     </div>
@@ -123,6 +129,8 @@ function onSource(messageId: string) {
           :read-only="readOnly"
           :merge-mode="mergeMode"
           :selected="picked.includes(item.id)"
+          :tz-section="props.tzSection"
+          @add-to-tz="addToTz(item.id)"
           @pick="togglePick(item.id)"
           @edit="openEdit(item.id)"
           @toggle-clarify="update((current) => updateRequirement(current, item.id, { needsClarification: !item.needsClarification }))"

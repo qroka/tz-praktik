@@ -29,6 +29,8 @@ const screen = computed<Screen>(() => {
 
 const withProgress = computed(() => ['dialog', 'registry', 'tz'].includes(screen.value));
 const showSide = computed(() => layout.value === 'wide' && withProgress.value);
+/** В редакторе ТЗ справа вместо прогресса показывается реестр требований. */
+const sideIsRegistry = computed(() => screen.value === 'tz');
 const showToggle = computed(() => layout.value !== 'wide' && withProgress.value);
 
 const sidebarOpen = ref(false);
@@ -81,16 +83,17 @@ function confirmImport() {
               <span class="sr-only sm:hidden">Сохранено</span>
             </span>
             <UTooltip text="Учебный режим: с подсказками и списком направлений"><UBadge color="primary" variant="subtle" icon="i-lucide-graduation-cap" label="Учебный режим" class="hidden sm:inline-flex" data-testid="mode-label" /></UTooltip>
-            <UTooltip text="Прогресс по направлениям и подсказка"><UButton
-              v-if="showToggle"
-              color="neutral"
-              variant="outline"
-              icon="i-lucide-chart-no-axes-column"
-              :label="summary ? `${summary.coveragePercent}%` : undefined"
-              aria-label="Открыть панель прогресса"
-              data-testid="open-progress"
-              @click="progressOpen = true"
-            /></UTooltip>
+            <UTooltip v-if="showToggle" :text="sideIsRegistry ? 'Реестр требований: можно сверяться при написании ТЗ' : 'Прогресс по направлениям и подсказка'">
+              <UButton
+                color="neutral"
+                variant="outline"
+                :icon="sideIsRegistry ? 'i-lucide-clipboard-list' : 'i-lucide-chart-no-axes-column'"
+                :label="sideIsRegistry ? String(summary?.requirements ?? 0) : summary ? `${summary.coveragePercent}%` : undefined"
+                :aria-label="sideIsRegistry ? 'Открыть реестр требований' : 'Открыть панель прогресса'"
+                :data-testid="sideIsRegistry ? 'open-side-registry' : 'open-progress'"
+                @click="progressOpen = true"
+              />
+            </UTooltip>
           </template>
         </UDashboardNavbar>
       </template>
@@ -106,14 +109,23 @@ function confirmImport() {
     </UDashboardPanel>
 
     <UDashboardPanel v-if="showSide" id="progress" resizable :default-size="22" :min-size="18" :max-size="30" class="no-print" :ui="{ body: 'p-0 sm:p-0' }">
-      <template #body><LearningProgress /></template>
+      <template #body>
+        <div v-if="sideIsRegistry" class="p-4"><RequirementRegistry embedded :tz-section="attempt?.activeSection" /></div>
+        <LearningProgress v-else />
+      </template>
     </UDashboardPanel>
 
-    <USlideover v-if="layout !== 'compact'" v-model:open="progressOpen" side="right" title="Ваш прогресс" description="Охват направлений и подсказка" :ui="{ content: 'max-w-sm' }">
-      <template #body><LearningProgress embedded /></template>
+    <USlideover v-if="layout !== 'compact'" v-model:open="progressOpen" side="right" :title="sideIsRegistry ? 'Реестр требований' : 'Ваш прогресс'" :description="sideIsRegistry ? 'Сохранённые требования' : 'Охват направлений и подсказка'" :ui="{ content: 'max-w-md' }">
+      <template #body>
+        <RequirementRegistry v-if="sideIsRegistry" embedded :tz-section="attempt?.activeSection" @source="progressOpen = false" />
+        <LearningProgress v-else embedded />
+      </template>
     </USlideover>
-    <UDrawer v-else v-model:open="progressOpen" title="Ваш прогресс" description="Охват направлений и подсказка" :ui="{ content: 'max-h-[85dvh]' }">
-      <template #body><LearningProgress embedded /></template>
+    <UDrawer v-else v-model:open="progressOpen" :title="sideIsRegistry ? 'Реестр требований' : 'Ваш прогресс'" :description="sideIsRegistry ? 'Сохранённые требования' : 'Охват направлений и подсказка'" :ui="{ content: 'max-h-[85dvh]' }">
+      <template #body>
+        <RequirementRegistry v-if="sideIsRegistry" embedded :tz-section="attempt?.activeSection" @source="progressOpen = false" />
+        <LearningProgress v-else embedded />
+      </template>
     </UDrawer>
 
     <ConfirmDialog v-model:open="resetOpen" title="Начать заново?" confirm-label="Удалить и начать заново" @confirm="confirmReset">

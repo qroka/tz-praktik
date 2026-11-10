@@ -8,6 +8,8 @@ defineProps<{
   readOnly: boolean;
   mergeMode: boolean;
   selected: boolean;
+  /** Номер раздела ТЗ, куда запись переносится кнопкой; без него кнопки нет. */
+  tzSection?: number;
 }>();
 const emit = defineEmits<{
   pick: [];
@@ -16,6 +18,7 @@ const emit = defineEmits<{
   toggleConflict: [];
   remove: [];
   source: [];
+  addToTz: [];
 }>();
 </script>
 
@@ -62,5 +65,17 @@ const emit = defineEmits<{
         <UTooltip text="Удалить запись"><UButton color="neutral" variant="ghost" size="md" square icon="i-lucide-trash-2" aria-label="Удалить" @click="emit('remove')" /></UTooltip>
       </span>
     </div>
+    <UTooltip v-if="tzSection && !readOnly" text="Добавить текст записи в выбранный раздел ТЗ">
+      <UButton
+        block
+        color="primary"
+        variant="soft"
+        icon="i-lucide-list-plus"
+        :disabled="item.movedToSections?.includes(tzSection)"
+        :label="item.movedToSections?.includes(tzSection) ? `Уже в разделе ${tzSection}` : `В раздел ${tzSection}`"
+        data-testid="add-to-tz"
+        @click="emit('addToTz')"
+      />
+    </UTooltip>
   </UCard>
 </template>

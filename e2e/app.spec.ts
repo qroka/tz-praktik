@@ -342,3 +342,17 @@ test('Тема и режим переключаются и сохраняютс�
   await expect(page.locator('html')).not.toHaveClass(/dark/);
   await expect(page.locator('html')).toHaveCSS('--ui-radius', '0.75rem');
 });
+
+test('Редактор ТЗ: справа реестр, запись добавляется в выбранный раздел одной кнопкой', async ({ page }) => {
+  await start(page, 'Раздел');
+  await ask(page, 'Какая температура воды нужна после теплообменника?');
+  await capture(page, 'Поддерживать температуру воды 60 °C', 'Регулируемые параметры');
+
+  await nav(page, /Редактор ТЗ/).click();
+  await expect(page.getByTestId('coverage-percent')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Добавить', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: /Требования к автоматическому регулированию/ }).click();
+  await page.getByTestId('add-to-tz').click();
+  await expect(page.getByLabel(/Текст раздела/)).toHaveValue(/Поддерживать температуру воды 60/);
+  await expect(page.getByTestId('add-to-tz')).toBeDisabled();
+});
