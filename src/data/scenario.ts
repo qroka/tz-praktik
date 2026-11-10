@@ -1,7 +1,7 @@
 // Учебный кейс: всё, что нужно движку и интерфейсу, собрано в одном объекте.
 import type { Category, Scenario, TzSection } from '../types';
 import { facts } from './facts';
-import { ambiguities, attributeConcepts, conceptSuppress, intents, lexicon, subjectConcepts, topics } from './intents';
+import { ambiguities, attributeConcepts, conceptCombos, conceptSuppress, intents, lexicon, subjectConcepts, topics } from './intents';
 import { meta, replies } from './responses';
 
 export const categories: Category[] = [
@@ -58,6 +58,7 @@ export const scenario: Scenario = {
   lexicon,
   subjectConcepts,
   conceptSuppress,
+  conceptCombos,
   attributeConcepts,
   ambiguities,
   topics,

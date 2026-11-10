@@ -22,17 +22,26 @@ type CompiledLexeme = { concept: string; parts: { text: string; exact: boolean }
 
 const lexiconCache = new WeakMap<object, CompiledLexeme[]>();
 
+/** Короткие основы, которые и внутри словосочетания остаются началом слова («сетев вод» — «сетевая вода»). */
+const SHORT_STEMS = new Set(['вод']);
+
+/** Обычные слова, которые из-за одной буквы похожи на термин («теперь» — «температура»). */
+const NOT_A_TYPO = new Set(['теперь']);
+
 function compileLexicon(lexicon: Record<string, string[]>): CompiledLexeme[] {
   const cached = lexiconCache.get(lexicon);
   if (cached) return cached;
   const compiled: CompiledLexeme[] = [];
   for (const [concept, entries] of Object.entries(lexicon)) {
     for (const entry of entries) {
+      const words = entry.split(' ');
       compiled.push({
         concept,
-        parts: entry.split(' ').map((part) => ({
+        parts: words.map((part) => ({
           text: part.startsWith('=') ? part.slice(1) : part,
-          exact: part.startsWith('='),
+          // В словосочетании предлоги и короткие слова («в», «до», «как», «что») сравниваются целиком:
+          // иначе «в теплообмен» находит «выходе теплообменника», а «как часто» — «какой частотник».
+          exact: part.startsWith('=') || (words.length > 1 && part.length <= 3 && !SHORT_STEMS.has(part)),
         })),
       });
     }
@@ -41,18 +50,32 @@ function compileLexicon(lexicon: Record<string, string[]>): CompiledLexeme[] {
   return compiled;
 }
 
-function tokenMatches(token: string, part: { text: string; exact: boolean }): boolean {
-  return part.exact ? token === part.text : fuzzyStartsWith(token, part.text);
+function tokenMatches(token: string, part: { text: string; exact: boolean }, strict: boolean): boolean {
+  if (part.exact) return token === part.text;
+  return strict ? token.startsWith(part.text) : fuzzyStartsWith(token, part.text);
+}
+
+/**
+ * Слово, которое словарь и так знает без опечаток, на опечатку не проверяем:
+ * иначе «автоматизации» читается как «автоматический», а «предлагаете» — как «предел».
+ */
+function isKnownWord(token: string, lexemes: CompiledLexeme[]): boolean {
+  if (NOT_A_TYPO.has(token)) return true;
+  return lexemes.some((lexeme) =>
+    lexeme.parts.some((part) => part.text.length >= 4 && (part.exact ? token === part.text : token.startsWith(part.text))),
+  );
 }
 
 /** Выделяет понятия. Лексема из нескольких слов ищется как последовательность. */
 export function extractConcepts(tokens: string[], lexicon: Record<string, string[]>): Set<string> {
   const concepts = new Set<string>();
-  for (const lexeme of compileLexicon(lexicon)) {
+  const lexemes = compileLexicon(lexicon);
+  const strict = tokens.map((token) => isKnownWord(token, lexemes));
+  for (const lexeme of lexemes) {
     if (concepts.has(lexeme.concept)) continue;
     const { parts } = lexeme;
     for (let start = 0; start <= tokens.length - parts.length; start++) {
-      if (parts.every((part, offset) => tokenMatches(tokens[start + offset], part))) {
+      if (parts.every((part, offset) => tokenMatches(tokens[start + offset], part, strict[start + offset]))) {
         concepts.add(lexeme.concept);
         break;
       }
@@ -67,6 +90,10 @@ export function analyze(text: string, scenario: Scenario): Analysis {
   const concepts = extractConcepts(tokens, scenario.lexicon);
   for (const [phrase, dropped] of Object.entries(scenario.conceptSuppress ?? {})) {
     if (concepts.has(phrase)) dropped.forEach((concept) => concepts.delete(concept));
+  }
+  // Составные понятия: «как» + «сейчас» вместе значат вопрос о нынешнем порядке работы.
+  for (const [combo, parts] of Object.entries(scenario.conceptCombos ?? {})) {
+    if (parts.every((concept) => concepts.has(concept))) concepts.add(combo);
   }
   return {
     normalized,
@@ -135,6 +162,8 @@ function similarity(query: Set<string>, example: Set<string>): number {
   return common / (query.size + example.size - common);
 }
 
+const ELLIPSIS_START = new Set(['а', 'и', 'ну', 'тогда']);
+
 /** Какие понятия подставить из темы разговора: только если в вопросе нет своего предмета. */
 export function contextConcepts(analysis: Analysis, ctx: MatchContext, scenario: Scenario): Set<string> {
   const carried = new Set<string>();
@@ -150,7 +179,9 @@ export function contextConcepts(analysis: Analysis, ctx: MatchContext, scenario:
   }
   // Короткий вопрос без признака («а по давлению после насоса?») наследует признак предыдущего.
   const hasAttribute = scenario.attributeConcepts.some((concept) => analysis.concepts.has(concept));
-  if (!hasAttribute && analysis.tokens.length <= 6) {
+  // Полный вопрос («Какое давление воды до насоса?») признак не наследует — только обрывочное уточнение.
+  const elliptical = analysis.tokens.length <= 3 || ELLIPSIS_START.has(analysis.tokens[0]);
+  if (!hasAttribute && elliptical && analysis.tokens.length <= 6) {
     for (const concept of ctx.lastAttributes) carried.add(concept);
   }
   return carried;
@@ -163,6 +194,7 @@ export function rankIntents(analysis: Analysis, ctx: MatchContext, scenario: Sce
   const carried = contextConcepts(merged, ctx, scenario);
   const queryStems = new Set(analysis.stems.filter((s) => !STOP_STEMS.has(s)));
   const ranked: RankedIntent[] = [];
+  const topicConcepts = new Set((ctx.topic ? scenario.topics[ctx.topic]?.concepts ?? [] : []).filter((concept) => carried.has(concept)));
 
   for (const intent of scenario.intents) {
     if (intent.exclude?.some((concept) => concepts.has(concept))) continue;
@@ -170,6 +202,7 @@ export function rankIntents(analysis: Analysis, ctx: MatchContext, scenario: Sce
 
     let score = intent.weight ?? 0;
     let viaContext = false;
+    let viaTopic = false;
     let satisfied = true;
     let direct = 0;
     const mentioned = new Set<string>(intent.optional ?? []);
@@ -182,6 +215,7 @@ export function rankIntents(analysis: Analysis, ctx: MatchContext, scenario: Sce
       else if (group.some((concept) => carried.has(concept))) {
         score += 1.4;
         viaContext = true;
+        if (group.some((concept) => topicConcepts.has(concept))) viaTopic = true;
       } else {
         satisfied = false;
         break;
@@ -189,6 +223,9 @@ export function rankIntents(analysis: Analysis, ctx: MatchContext, scenario: Sce
     }
     // Хотя бы один признак должен быть в самом вопросе: одна тема разговора ответа не вызывает.
     if (!satisfied || direct === 0) continue;
+    // Вопрос достроен только унаследованным признаком, а намерение с темой разговора несовместимо:
+    // «а температура?» после максимального давления теплоносителя — не про аварийную температуру воды.
+    if (viaContext && !viaTopic && intent.exclude?.some((concept) => topicConcepts.has(concept) && scenario.subjectConcepts.includes(concept))) continue;
 
     for (const concept of intent.optional ?? []) if (concepts.has(concept)) score += 0.7;
     // Лишний предмет в вопросе говорит о том, что спрашивают о другом.

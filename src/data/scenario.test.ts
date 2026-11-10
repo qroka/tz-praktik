@@ -36,7 +36,7 @@ describe('Объём сценария', () => {
 
 describe('Целостность данных', () => {
   it('все понятия намерений есть в словаре', () => {
-    const missing = [...usedConcepts()].filter((c) => !lexicon[c]);
+    const missing = [...usedConcepts()].filter((c) => !lexicon[c] && !scenario.conceptCombos?.[c]);
     expect(missing).toEqual([]);
   });
   it('у каждого намерения с ответами есть данные, факты существуют', () => {
