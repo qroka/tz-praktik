@@ -57,7 +57,7 @@ test('1. Запуск: учебный режим, проверка имени, �
   await page.getByLabel('Имя студента').fill('Ирина');
   await page.getByRole('button', { name: 'Начать тренировку' }).click();
   await expect(page.getByLabel('Ваш вопрос заказчику')).toBeVisible();
-  await expect(page.getByTestId('mode-label')).toHaveText('Учебный режим');
+  await expect(page.getByTestId('mode-label')).toHaveCount(0);
 
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('tz-praktikum:attempt:v1') ?? 'null'));
   await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem('tz-praktikum:attempt:v1') ?? 'null')?.difficulty)).toBe('learning');

@@ -82,7 +82,6 @@ function confirmImport() {
               <UIcon name="i-lucide-check" class="size-4 text-primary" /><span class="hidden sm:inline">Сохранено {{ formatTime(save.at) }}</span>
               <span class="sr-only sm:hidden">Сохранено</span>
             </span>
-            <UTooltip text="Учебный режим: с подсказками и списком направлений"><UBadge color="primary" variant="subtle" icon="i-lucide-graduation-cap" label="Учебный режим" class="hidden sm:inline-flex" data-testid="mode-label" /></UTooltip>
             <UTooltip v-if="showToggle" :text="sideIsRegistry ? 'Реестр требований: можно сверяться при написании ТЗ' : 'Прогресс по направлениям и подсказка'">
               <UButton
                 color="neutral"
