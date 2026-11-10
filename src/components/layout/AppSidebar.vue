@@ -5,6 +5,7 @@ import { useSession } from '../../composables/useSession';
 import { useTheme } from '../../composables/useTheme';
 import { themeAccent, type TzThemePreset } from '../../theme/themes';
 import type { Screen } from '../../types';
+import TzLogo from './TzLogo.vue';
 
 const open = defineModel<boolean>('open', { default: false });
 const emit = defineEmits<{ reset: []; import: [file: File] }>();
@@ -92,7 +93,7 @@ function onFile(event: Event) {
   <UDashboardSidebar v-model:open="open" collapsible resizable :min-size="12" :default-size="15" :max-size="22" :ui="{ footer: 'border-t border-default' }" class="no-print">
     <template #header="{ collapsed }">
       <div class="flex min-w-0 items-center gap-2">
-        <span class="grid size-7 shrink-0 place-items-center rounded-md bg-primary text-xs font-bold text-inverted" aria-hidden="true">ТЗ</span>
+        <TzLogo class="size-7 shrink-0" />
         <h1 v-if="!collapsed" class="truncate text-sm font-semibold">ТЗ Практикум</h1>
       </div>
     </template>
