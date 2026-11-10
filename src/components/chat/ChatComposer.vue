@@ -39,26 +39,27 @@ defineExpose({ focus });
       <span class="line-clamp-1 flex-1 text-toned">Уточнение: {{ replyText }}</span>
       <UTooltip text="Отменить уточнение"><UButton color="neutral" variant="ghost" size="sm" square icon="i-lucide-x" aria-label="Отменить уточнение" @click="emit('cancelReply')" /></UTooltip>
     </div>
-    <UChatPrompt
-      ref="prompt"
-      v-model="text"
-      placeholder="Задайте следующий вопрос заказчику..."
-      variant="subtle"
-      :rows="2"
-      :maxrows="8"
-      :autofocus="false"
-      aria-label="Ваш вопрос заказчику"
-      @submit.prevent="submit"
-      @update:model-value="error = null"
-    >
-      <template #footer>
-        <div class="flex min-w-0 flex-1 items-center gap-3 text-xs text-muted">
-          <span v-if="error" class="flex items-center gap-1.5 text-error" role="alert"><UIcon name="i-lucide-circle-alert" class="size-4 shrink-0" />{{ error }}</span>
-          <span v-else-if="!compactLayout">Enter отправляет, Shift + Enter переносит строку</span>
-          <span v-if="text.length > MAX_MESSAGE - 100" class="ms-auto" :class="tooLong ? 'text-error' : ''">{{ text.length }}/{{ MAX_MESSAGE }}</span>
-        </div>
-        <UChatPromptSubmit :disabled="busy || tooLong" color="primary" aria-label="Отправить" @click.prevent="submit" />
-      </template>
-    </UChatPrompt>
+    <div class="flex items-stretch gap-2">
+      <UChatPrompt
+        ref="prompt"
+        v-model="text"
+        class="min-w-0 flex-1"
+        placeholder="Задайте следующий вопрос заказчику..."
+        variant="outline"
+        :rows="1"
+        :maxrows="6"
+        :autofocus="false"
+        aria-label="Ваш вопрос заказчику"
+        :ui="{ root: 'px-3 py-1' }"
+        @submit.prevent="submit"
+        @update:model-value="error = null"
+      />
+      <UChatPromptSubmit :disabled="busy || tooLong" color="primary" size="xl" class="h-auto w-12 shrink-0 justify-center" aria-label="Отправить" @click.prevent="submit" />
+    </div>
+    <div class="flex min-h-6 items-center gap-3 pt-1.5 text-xs text-muted">
+      <span v-if="error" class="flex items-center gap-1.5 text-error" role="alert"><UIcon name="i-lucide-circle-alert" class="size-4 shrink-0" />{{ error }}</span>
+      <span v-else-if="!compactLayout">Enter отправляет, Shift + Enter переносит строку</span>
+      <span v-if="text.length > MAX_MESSAGE - 100" class="ms-auto" :class="tooLong ? 'text-error' : ''">{{ text.length }}/{{ MAX_MESSAGE }}</span>
+    </div>
   </div>
 </template>
