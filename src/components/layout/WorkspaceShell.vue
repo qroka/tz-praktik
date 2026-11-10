@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { minSectionWords } from '../../data/evaluation';
-import { formatTime, useLayout } from '../../composables/useLayout';
+import { useLayout } from '../../composables/useLayout';
 import { useSession } from '../../composables/useSession';
 import { countWords } from '../../state/learningProgress';
 import type { Attempt, Screen } from '../../types';
@@ -14,10 +14,8 @@ import ResultScreen from '../results/ResultScreen.vue';
 import AppSidebar from './AppSidebar.vue';
 import ConfirmDialog from './ConfirmDialog.vue';
 
-const { attempt, scenario, save, summary, reset, finish, applyImport, readProgressFile, notify, exportProgress } = useSession();
+const { attempt, scenario, summary, reset, finish, applyImport, readProgressFile, notify, exportProgress } = useSession();
 const { layout } = useLayout();
-
-const TITLES: Record<Screen, string> = { dialog: 'Диалог', registry: 'Реестр требований', tz: 'Редактор ТЗ', progress: 'Мой прогресс', result: 'Результат' };
 
 const screen = computed<Screen>(() => {
   const current = attempt.value!;
@@ -33,6 +31,8 @@ const showSide = computed(() => layout.value === 'wide' && withProgress.value);
 const sideIsRegistry = computed(() => screen.value === 'tz');
 const showToggle = computed(() => layout.value !== 'wide' && withProgress.value);
 
+/** Верхней панели нет на широком экране; ниже она нужна только для кнопки меню и кнопки прогресса. */
+const showBar = computed(() => layout.value === 'compact' || showToggle.value);
 const sidebarOpen = ref(false);
 const progressOpen = ref(false);
 const confirm = ref<'reset' | 'finish' | null>(null);
@@ -69,19 +69,9 @@ function confirmImport() {
     <AppSidebar v-model:open="sidebarOpen" @reset="confirm = 'reset'" @import="onImport" />
 
     <UDashboardPanel id="main" :ui="{ body: 'p-0 sm:p-0 gap-0 overflow-hidden' }" class="print-flow">
-      <template #header>
-        <UDashboardNavbar :title="TITLES[screen]" class="no-print">
+      <template v-if="showBar" #header>
+        <UDashboardNavbar class="no-print">
           <template #right>
-            <span v-if="save.state === 'error'" class="flex items-center gap-1.5 text-sm text-error" role="status" data-testid="save-state">
-              <UIcon name="i-lucide-cloud-off" class="size-4" /><span class="hidden sm:inline">Не удалось сохранить</span>
-            </span>
-            <span v-else-if="save.state === 'saving'" class="flex items-center gap-1.5 text-sm text-muted" data-testid="save-state">
-              <UIcon name="i-lucide-loader-circle" class="size-4 animate-spin" /><span class="hidden sm:inline">Сохранение…</span>
-            </span>
-            <span v-else-if="save.state === 'saved' && save.at" class="flex items-center gap-1.5 text-sm text-muted" data-testid="save-state">
-              <UIcon name="i-lucide-check" class="size-4 text-primary" /><span class="hidden sm:inline">Сохранено {{ formatTime(save.at) }}</span>
-              <span class="sr-only sm:hidden">Сохранено</span>
-            </span>
             <UTooltip v-if="showToggle" :text="sideIsRegistry ? 'Реестр требований: можно сверяться при написании ТЗ' : 'Прогресс по направлениям и подсказка'">
               <UButton
                 color="neutral"

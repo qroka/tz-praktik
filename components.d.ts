@@ -28,6 +28,7 @@ declare module 'vue' {
     ResultScreen: typeof import('./src/components/results/ResultScreen.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    SaveStatus: typeof import('./src/components/layout/SaveStatus.vue')['default']
     TzEditor: typeof import('./src/components/editor/TzEditor.vue')['default']
     TzLogo: typeof import('./src/components/layout/TzLogo.vue')['default']
     UAccordion: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Accordion.vue')['default']
