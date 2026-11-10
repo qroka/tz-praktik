@@ -38,6 +38,13 @@ const items = computed<NavigationMenuItem[][]>(() => {
   return [list];
 });
 
+/** На телефоне меню выезжает поверх страницы: диалог подтверждения открывается только после его закрытия, иначе он оказывается под ним. */
+function afterSidebarClosed(action: () => void) {
+  if (!open.value) return action();
+  open.value = false;
+  window.setTimeout(action, 300);
+}
+
 const keep = (e: Event) => e.preventDefault();
 const presetOf = (item: unknown) => presets.find((p) => p.id === (item as { presetId?: string }).presetId) ?? presets[0]!;
 const chipStyle = (p: TzThemePreset) => ({ color: themeAccent(p), background: `color-mix(in oklab, ${themeAccent(p)} 20%, transparent)` });
@@ -78,14 +85,14 @@ const menu = computed<DropdownMenuItem[][]>(() => [
     { label: 'Сохранить файл прогресса', icon: 'i-lucide-download', onSelect: exportProgress },
     { label: 'Загрузить файл прогресса', icon: 'i-lucide-upload', onSelect: () => fileInput.value?.click() },
   ],
-  [{ label: 'Начать заново', icon: 'i-lucide-rotate-ccw', color: 'error', onSelect: () => emit('reset') }],
+  [{ label: 'Начать заново', icon: 'i-lucide-rotate-ccw', color: 'error', onSelect: () => afterSidebarClosed(() => emit('reset')) }],
 ]);
 
 function onFile(event: Event) {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
   input.value = '';
-  if (file) emit('import', file);
+  if (file) afterSidebarClosed(() => emit('import', file));
 }
 </script>
 

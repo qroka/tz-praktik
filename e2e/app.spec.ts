@@ -330,6 +330,20 @@ test.describe('10. Мобильная компоновка 375 px', () => {
   });
 });
 
+test.describe('Мобильный сброс', () => {
+  test.use({ viewport: { width: 375, height: 700 }, hasTouch: true, isMobile: true });
+
+  test('«Начать заново» в боковом меню открывает подтверждение и сбрасывает попытку', async ({ page }) => {
+    await start(page, 'Телефон');
+    await page.getByRole('button', { name: 'Открыть боковую панель' }).click();
+    await page.getByRole('button', { name: 'Меню попытки' }).click();
+    await page.getByRole('menuitem', { name: 'Начать заново' }).tap();
+    await expect(page.getByRole('button', { name: 'Удалить и начать заново' })).toBeVisible();
+    await page.getByRole('button', { name: 'Удалить и начать заново' }).tap();
+    await expect(page.getByRole('button', { name: 'Начать тренировку' })).toBeVisible();
+  });
+});
+
 test('Тема и режим переключаются и сохраняются', async ({ page }) => {
   await start(page, 'Тема');
   await expect(page.locator('html')).toHaveClass(/dark/);
