@@ -18,7 +18,9 @@ const META = {
         <span class="block font-medium text-default">{{ row.title }}</span>
         <span v-if="withDirections && row.status === 'none'" class="block text-xs text-muted">{{ row.direction }}</span>
       </span>
-      <span class="shrink-0 text-xs" :class="META[row.status].cls">{{ META[row.status].label }}</span>
+      <span class="shrink-0 text-xs tabular-nums" :class="META[row.status].cls" :title="META[row.status].label">
+        {{ row.found }}/{{ row.total }}<span class="sr-only"> — {{ META[row.status].label }}</span>
+      </span>
     </li>
   </ul>
 </template>
