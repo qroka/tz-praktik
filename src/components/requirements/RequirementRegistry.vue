@@ -93,18 +93,18 @@ function onSource(messageId: string) {
   <section :class="props.embedded ? 'flex flex-col gap-4' : 'flex h-full min-h-0 flex-col gap-4 p-4 sm:p-6'" aria-labelledby="registry-title">
     <div class="flex flex-wrap items-center gap-2">
       <h2 id="registry-title" class="mr-auto text-xl font-semibold">
-        Реестр требований <UBadge color="neutral" variant="subtle" :label="String(items.length)" data-testid="registry-count" />
+        Реестр требований <UTooltip text="Всего записей в реестре"><UBadge color="neutral" variant="subtle" :label="String(items.length)" data-testid="registry-count" /></UTooltip>
       </h2>
       <template v-if="!readOnly">
-        <UButton v-if="items.length >= 2" :color="mergeMode ? 'primary' : 'neutral'" :variant="mergeMode ? 'solid' : 'outline'" icon="i-lucide-merge" label="Объединить" :aria-pressed="mergeMode" @click="mergeMode ? closeMerge() : (mergeMode = true)" />
-        <UButton icon="i-lucide-plus" label="Добавить" @click="openAdd" />
+        <UTooltip v-if="items.length >= 2" text="Объединить несколько записей в одну"><UButton :color="mergeMode ? 'primary' : 'neutral'" :variant="mergeMode ? 'solid' : 'outline'" icon="i-lucide-merge" label="Объединить" :aria-pressed="mergeMode" @click="mergeMode ? closeMerge() : (mergeMode = true)" /></UTooltip>
+        <UTooltip text="Добавить требование вручную"><UButton icon="i-lucide-plus" label="Добавить" @click="openAdd" /></UTooltip>
       </template>
     </div>
 
     <div v-if="items.length > 0" class="flex flex-wrap items-center gap-2" role="group" aria-label="Фильтры реестра">
       <USelect v-model="category" :items="categoryItems" aria-label="Фильтр по категории" class="w-full sm:w-64" />
-      <UButton :color="onlyClarify ? 'primary' : 'neutral'" :variant="onlyClarify ? 'soft' : 'outline'" icon="i-lucide-circle-help" :label="`Уточнить: ${clarifyCount}`" :aria-pressed="onlyClarify" @click="onlyClarify = !onlyClarify" />
-      <UButton :color="onlyConflict ? 'primary' : 'neutral'" :variant="onlyConflict ? 'soft' : 'outline'" icon="i-lucide-triangle-alert" :label="`Противоречия: ${conflictCount}`" :aria-pressed="onlyConflict" @click="onlyConflict = !onlyConflict" />
+      <UTooltip text="Показать только записи, которые нужно уточнить"><UButton :color="onlyClarify ? 'primary' : 'neutral'" :variant="onlyClarify ? 'soft' : 'outline'" icon="i-lucide-circle-help" :label="`Уточнить: ${clarifyCount}`" :aria-pressed="onlyClarify" @click="onlyClarify = !onlyClarify" /></UTooltip>
+      <UTooltip text="Показать только записи с противоречиями"><UButton :color="onlyConflict ? 'primary' : 'neutral'" :variant="onlyConflict ? 'soft' : 'outline'" icon="i-lucide-triangle-alert" :label="`Противоречия: ${conflictCount}`" :aria-pressed="onlyConflict" @click="onlyConflict = !onlyConflict" /></UTooltip>
     </div>
 
     <div :class="props.embedded ? 'space-y-5' : '-m-1 min-h-0 flex-1 space-y-5 overflow-y-auto p-1'">

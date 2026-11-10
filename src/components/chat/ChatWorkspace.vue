@@ -96,7 +96,7 @@ function saveRequirement(draft: RequirementDraft) {
         <p class="truncate text-sm text-muted">{{ scenario.title }} · {{ scenario.customer.role }}</p>
       </div>
       <span class="flex-1 sm:hidden" />
-      <UBadge
+      <UTooltip text="Состояние тренировки"><UBadge
         :color="readOnly ? 'neutral' : 'primary'"
         variant="subtle"
         size="lg"
@@ -104,10 +104,10 @@ function saveRequirement(draft: RequirementDraft) {
                 data-testid="chat-status"
       >
         <template #leading><span class="size-2 rounded-full bg-current" aria-hidden="true" /></template>
-      </UBadge>
+      </UBadge></UTooltip>
       <div class="flex gap-2">
-        <UButton color="neutral" variant="outline" icon="i-lucide-book-open" :label="props.layout === 'compact' ? undefined : 'О кейсе'" aria-label="О кейсе" class="min-h-10" @click="caseOpen = true" />
-        <UButton
+        <UTooltip text="Описание учебного кейса"><UButton color="neutral" variant="outline" icon="i-lucide-book-open" :label="props.layout === 'compact' ? undefined : 'О кейсе'" aria-label="О кейсе" class="min-h-10" @click="caseOpen = true" /></UTooltip>
+        <UTooltip text="Быстрый просмотр и добавление требований"><UButton
           color="neutral"
           variant="outline"
           icon="i-lucide-clipboard-list"
@@ -116,7 +116,7 @@ function saveRequirement(draft: RequirementDraft) {
           class="min-h-10"
           data-testid="open-registry"
           @click="registryOpen = true"
-        />
+        /></UTooltip>
       </div>
     </header>
 

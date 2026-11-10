@@ -111,7 +111,7 @@ function onFile(event: Event) {
 
     <template #footer="{ collapsed }">
       <UDropdownMenu :items="menu" :content="{ align: 'start', side: 'top' }" :ui="{ content: 'w-60' }">
-        <UButton color="neutral" variant="ghost" block :square="collapsed" class="justify-start data-[state=open]:bg-elevated" aria-label="Меню попытки">
+        <UButton color="neutral" variant="ghost" block :square="collapsed" class="justify-start data-[state=open]:bg-elevated" aria-label="Меню попытки" title="Тема оформления, режим и файлы прогресса">
           <span class="flex size-6 shrink-0 items-center justify-center rounded-full" :style="chipStyle(preset)">
             <UIcon :name="preset.icon" class="size-3.5" />
           </span>

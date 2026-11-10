@@ -20,7 +20,7 @@ const { summary, attempt } = useSession();
         <span class="text-5xl font-bold tracking-tight" data-testid="coverage-percent">{{ summary.coveragePercent }}%</span>
         <span class="text-toned">изучено</span>
       </p>
-      <UProgress :model-value="summary.coveragePercent" class="mt-3" :ui="{ base: 'bg-elevated' }" aria-label="Доля исследованных направлений" />
+      <UTooltip text="Доля направлений, по которым уже есть сведения"><UProgress :model-value="summary.coveragePercent" class="mt-3" :ui="{ base: 'bg-elevated' }" aria-label="Доля исследованных направлений" /></UTooltip>
       <p class="mt-2 flex justify-between text-xs text-muted">
         <span data-testid="explored-count">{{ summary.explored }} из {{ summary.all }} тем</span>
         <span data-testid="remaining-count">Осталось {{ summary.remaining }}</span>
@@ -37,8 +37,8 @@ const { summary, attempt } = useSession();
         <dd class="font-semibold">{{ summary.filledSections }} из {{ summary.totalSections }}</dd>
       </div>
       <div v-if="summary.needsClarification || summary.conflicts" class="col-span-2 flex flex-wrap gap-2">
-        <UBadge v-if="summary.needsClarification" color="warning" variant="subtle" icon="i-lucide-circle-help" :label="`Уточнить: ${summary.needsClarification}`" />
-        <UBadge v-if="summary.conflicts" color="warning" variant="subtle" icon="i-lucide-triangle-alert" :label="`Противоречий: ${summary.conflicts}`" />
+        <UTooltip v-if="summary.needsClarification" text="Записи реестра, которые нужно уточнить"><UBadge color="warning" variant="subtle" icon="i-lucide-circle-help" :label="`Уточнить: ${summary.needsClarification}`" /></UTooltip>
+        <UTooltip v-if="summary.conflicts" text="Записи, отмеченные как противоречивые"><UBadge color="warning" variant="subtle" icon="i-lucide-triangle-alert" :label="`Противоречий: ${summary.conflicts}`" /></UTooltip>
       </div>
     </dl>
 

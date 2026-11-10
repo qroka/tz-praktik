@@ -37,7 +37,7 @@ defineExpose({ focus });
     <div v-if="replyText" class="mb-2 flex items-center gap-2 rounded-lg bg-elevated px-3 py-2 text-sm" data-testid="reply-target">
       <UIcon name="i-lucide-corner-down-right" class="size-4 shrink-0 text-primary" aria-hidden="true" />
       <span class="line-clamp-1 flex-1 text-toned">Уточнение: {{ replyText }}</span>
-      <UButton color="neutral" variant="ghost" size="sm" square icon="i-lucide-x" aria-label="Отменить уточнение" @click="emit('cancelReply')" />
+      <UTooltip text="Отменить уточнение"><UButton color="neutral" variant="ghost" size="sm" square icon="i-lucide-x" aria-label="Отменить уточнение" @click="emit('cancelReply')" /></UTooltip>
     </div>
     <UChatPrompt
       ref="prompt"

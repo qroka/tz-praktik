@@ -53,14 +53,14 @@ const ui = computed(() => ({
     </UChatMessage>
 
     <div class="flex flex-wrap items-center gap-x-2 gap-y-1 pb-3 text-xs" :class="isCustomer ? 'ps-10' : 'justify-end'">
-      <UBadge v-if="note" color="neutral" variant="subtle" size="sm" :label="note" />
-      <UBadge v-if="designerNote" color="primary" variant="subtle" size="sm" label="Решение предлагает проектировщик" />
-      <UBadge v-if="savedCount > 0" color="primary" variant="subtle" size="sm" icon="i-lucide-check" :label="`В реестре${savedCount > 1 ? `: ${savedCount}` : ''}`" />
+      <UTooltip v-if="note" text="Как заказчик отнёсся к вашему вопросу"><UBadge color="neutral" variant="subtle" size="sm" :label="note" /></UTooltip>
+      <UTooltip v-if="designerNote" text="Это предложение инженера, а не требование заказчика"><UBadge color="primary" variant="subtle" size="sm" label="Решение предлагает проектировщик" /></UTooltip>
+      <UTooltip v-if="savedCount > 0" text="Ответ уже сохранён в реестре требований"><UBadge color="primary" variant="subtle" size="sm" icon="i-lucide-check" :label="`В реестре${savedCount > 1 ? `: ${savedCount}` : ''}`" /></UTooltip>
       <template v-if="!readOnly && isCustomer">
-        <UButton size="sm" variant="soft" icon="i-lucide-bookmark-plus" label="Сохранить как требование" class="min-h-9" @click="emit('capture')" />
-        <UButton size="sm" color="neutral" variant="ghost" icon="i-lucide-corner-down-right" label="Уточнить" aria-label="Уточнить" class="min-h-9" @click="emit('clarify')" />
+        <UTooltip text="Записать этот ответ в реестр требований"><UButton size="sm" variant="soft" icon="i-lucide-bookmark-plus" label="Сохранить как требование" class="min-h-9" @click="emit('capture')" /></UTooltip>
+        <UTooltip text="Задать вопрос именно по этому ответу"><UButton size="sm" color="neutral" variant="ghost" icon="i-lucide-corner-down-right" label="Уточнить" aria-label="Уточнить" class="min-h-9" @click="emit('clarify')" /></UTooltip>
       </template>
-      <UButton v-if="!readOnly && !isCustomer" size="sm" color="neutral" variant="ghost" icon="i-lucide-rotate-ccw" label="Повторить" aria-label="Задать снова" class="min-h-9" @click="emit('repeat')" />
+      <UTooltip v-if="!readOnly && !isCustomer" text="Вставить этот вопрос в поле ввода ещё раз"><UButton size="sm" color="neutral" variant="ghost" icon="i-lucide-rotate-ccw" label="Повторить" aria-label="Задать снова" class="min-h-9" @click="emit('repeat')" /></UTooltip>
     </div>
   </div>
 </template>

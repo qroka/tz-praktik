@@ -80,8 +80,8 @@ function confirmImport() {
               <UIcon name="i-lucide-check" class="size-4 text-primary" /><span class="hidden sm:inline">Сохранено {{ formatTime(save.at) }}</span>
               <span class="sr-only sm:hidden">Сохранено</span>
             </span>
-            <UBadge color="primary" variant="subtle" icon="i-lucide-graduation-cap" label="Учебный режим" class="hidden sm:inline-flex" data-testid="mode-label" />
-            <UButton
+            <UTooltip text="Учебный режим: с подсказками и списком направлений"><UBadge color="primary" variant="subtle" icon="i-lucide-graduation-cap" label="Учебный режим" class="hidden sm:inline-flex" data-testid="mode-label" /></UTooltip>
+            <UTooltip text="Прогресс по направлениям и подсказка"><UButton
               v-if="showToggle"
               color="neutral"
               variant="outline"
@@ -90,7 +90,7 @@ function confirmImport() {
               aria-label="Открыть панель прогресса"
               data-testid="open-progress"
               @click="progressOpen = true"
-            />
+            /></UTooltip>
           </template>
         </UDashboardNavbar>
       </template>

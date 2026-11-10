@@ -97,10 +97,10 @@ async function move(ids: string[]) {
 
       <div class="flex flex-wrap items-center gap-2">
         <span class="mr-auto text-sm text-muted">Слов: {{ countWords(text) }}</span>
-        <UButton color="neutral" variant="outline" icon="i-lucide-clipboard-list" label="Из реестра" data-testid="open-picker" @click="pickerOpen = true" />
-        <UButton color="neutral" variant="outline" icon="i-lucide-arrow-left" aria-label="Предыдущий раздел" :disabled="section.id === 1" @click="go(section.id - 1)" />
-        <UButton color="neutral" variant="outline" icon="i-lucide-arrow-right" aria-label="Следующий раздел" :disabled="section.id === total" @click="go(section.id + 1)" />
-        <UButton icon="i-lucide-flag" label="Завершить и проверить" data-testid="finish" @click="emit('finish')" />
+        <UTooltip text="Перенести сохранённые требования в этот раздел"><UButton color="neutral" variant="outline" icon="i-lucide-clipboard-list" label="Из реестра" data-testid="open-picker" @click="pickerOpen = true" /></UTooltip>
+        <UTooltip text="Предыдущий раздел"><UButton color="neutral" variant="outline" icon="i-lucide-arrow-left" aria-label="Предыдущий раздел" :disabled="section.id === 1" @click="go(section.id - 1)" /></UTooltip>
+        <UTooltip text="Следующий раздел"><UButton color="neutral" variant="outline" icon="i-lucide-arrow-right" aria-label="Следующий раздел" :disabled="section.id === total" @click="go(section.id + 1)" /></UTooltip>
+        <UTooltip text="Завершить попытку и получить оценку"><UButton icon="i-lucide-flag" label="Завершить и проверить" data-testid="finish" @click="emit('finish')" /></UTooltip>
       </div>
     </section>
 
