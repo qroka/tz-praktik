@@ -1,0 +1,186 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+/* Тёмная тема — единственная. Токены взяты из утверждённого референса. */
+:root {
+  --app-bg: #0f161f;
+  --surface: #1d2832;
+  --surface-raised: #26323d;
+  --surface-active: #23493f;
+  --border-subtle: #36434e;
+  --accent: #61d8b7;
+  --text-primary: #f2f7f8;
+  --text-secondary: #afc3cb;
+  --text-muted: #8ea5b1;
+  --warn: #f2b84b;
+  --danger: #f08a8a;
+  --radius-panel: 18px;
+  --motion: 160ms;
+  color-scheme: dark;
+}
+
+:root,
+:root.dark {
+  --ui-bg: var(--app-bg);
+  --ui-bg-muted: var(--surface);
+  --ui-bg-elevated: var(--surface-raised);
+  --ui-bg-accented: #33414d;
+  --ui-border: var(--border-subtle);
+  --ui-border-muted: #2c3843;
+  --ui-border-accented: #4a5a67;
+  --ui-text: var(--text-primary);
+  --ui-text-highlighted: #ffffff;
+  --ui-text-toned: var(--text-secondary);
+  --ui-text-muted: var(--text-secondary);
+  --ui-text-dimmed: var(--text-muted);
+  --ui-primary: var(--accent);
+  --ui-text-inverted: #0f161f;
+  --ui-bg-inverted: var(--accent);
+  --ui-radius: 0.75rem;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  background: var(--app-bg);
+  color: var(--text-primary);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-panel);
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Область прокрутки с аккуратной полосой. */
+.scroll-y {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-subtle) transparent;
+}
+
+/* Пузыри сообщений. */
+.bubble {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.msg-enter-active {
+  transition: opacity var(--motion) ease, transform var(--motion) ease;
+}
+.msg-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.msg-highlight [data-slot='content'] {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity var(--motion) ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.typing-dots i {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 3px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  animation: typing 1s infinite ease-in-out;
+}
+.typing-dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.typing-dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes typing {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+.composer-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Печать: светлая контрастная версия итогового отчёта. */
+@media print {
+  :root,
+  :root.dark {
+    --app-bg: #ffffff;
+    --surface: #ffffff;
+    --surface-raised: #f3f4f6;
+    --border-subtle: #cfd4da;
+    --text-primary: #111111;
+    --text-secondary: #333333;
+    --text-muted: #555555;
+    --ui-bg: #ffffff;
+    --ui-bg-elevated: #f3f4f6;
+    --ui-border: #cfd4da;
+    --ui-text: #111111;
+    --ui-text-muted: #333333;
+    --ui-text-dimmed: #555555;
+    color-scheme: light;
+  }
+  html,
+  body,
+  #app {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+    color: #111 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-flow {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .panel {
+    border-color: #cfd4da;
+    break-inside: avoid;
+  }
+}

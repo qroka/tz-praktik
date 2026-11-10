@@ -1,11 +1,19 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import vue from '@vitejs/plugin-vue';
+import ui from '@nuxt/ui/vite';
 
-// base: './' — сборка работает из любого подкаталога (GitHub Pages, папка на сервере).
+// base: путь GitHub Pages https://qroka.github.io/tz-praktik/. Маршрутизация — hash-история,
+// поэтому статическому хостингу не нужен серверный fallback.
 export default defineConfig({
-  base: './',
-  plugins: [react()],
+  base: '/tz-praktik/',
+  plugins: [
+    vue(),
+    ui({
+      colorMode: false,
+      ui: { colors: { primary: 'emerald', neutral: 'slate' } },
+    }),
+  ],
   server: { host: '127.0.0.1', port: 5173, strictPort: false },
   preview: { host: '127.0.0.1' },
   test: {

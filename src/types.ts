@@ -250,7 +250,7 @@ export type Requirement = {
   movedToSections?: number[];
 };
 
-export type Screen = 'dialog' | 'tz' | 'result';
+export type Screen = 'dialog' | 'registry' | 'tz' | 'progress' | 'result';
 
 export type EvaluationPart = {
   id: string;

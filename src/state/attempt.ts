@@ -162,7 +162,7 @@ export function validateAttempt(data: unknown, scenario: Scenario): { ok: true; 
   if (!raw.engine || !Array.isArray(raw.engine.disclosed) || !raw.engine.counters) {
     return { ok: false, error: 'Файл повреждён: нет состояния заказчика.' };
   }
-  const screen: Screen = raw.screen === 'tz' || raw.screen === 'result' ? raw.screen : 'dialog';
+  const screen: Screen = raw.screen === 'tz' || raw.screen === 'result' || raw.screen === 'registry' || raw.screen === 'progress' ? raw.screen : 'dialog';
   return {
     ok: true,
     attempt: {
