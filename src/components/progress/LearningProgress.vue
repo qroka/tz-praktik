@@ -10,10 +10,7 @@ const { summary, attempt } = useSession();
 
 <template>
   <section v-if="summary" :class="embedded ? 'flex flex-col gap-4' : 'flex h-full min-h-0 flex-col gap-4 p-4 sm:p-5'" aria-labelledby="progress-title">
-    <div class="flex items-center justify-between gap-2">
-      <h2 id="progress-title" class="text-lg font-semibold">Ваш прогресс</h2>
-      <span class="text-xs font-semibold text-primary">Учебный режим</span>
-    </div>
+    <h2 id="progress-title" class="text-lg font-semibold">Ваш прогресс</h2>
 
     <div>
       <p class="flex items-baseline gap-2">

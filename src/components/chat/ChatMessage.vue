@@ -52,7 +52,7 @@ const ui = computed(() => ({
       </template>
     </UChatMessage>
 
-    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 pb-3 text-xs" :class="isCustomer ? 'ps-10' : 'justify-end'">
+    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 pb-3 text-xs" :class="isCustomer ? 'ps-11' : 'justify-end'">
       <UTooltip v-if="note" text="Как заказчик отнёсся к вашему вопросу"><UBadge color="neutral" variant="subtle" size="sm" :label="note" /></UTooltip>
       <UTooltip v-if="designerNote" text="Это предложение инженера, а не требование заказчика"><UBadge color="primary" variant="subtle" size="sm" label="Решение предлагает проектировщик" /></UTooltip>
       <UTooltip v-if="savedCount > 0" text="Ответ уже сохранён в реестре требований"><UBadge color="primary" variant="subtle" size="sm" icon="i-lucide-check" :label="`В реестре${savedCount > 1 ? `: ${savedCount}` : ''}`" /></UTooltip>

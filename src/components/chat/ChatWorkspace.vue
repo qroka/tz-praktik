@@ -137,7 +137,7 @@ function saveRequirement(draft: RequirementDraft) {
           @repeat="repeat(message.text)"
         />
       </TransitionGroup>
-      <div v-if="typing" class="mx-auto flex max-w-4xl items-center gap-2 ps-10 pb-3 text-sm text-muted" data-testid="typing">
+      <div v-if="typing" class="mx-auto flex max-w-4xl items-center gap-2 ps-11 pb-3 text-sm text-muted" data-testid="typing">
         <span class="typing-dots" aria-hidden="true"><i /><i /><i /></span>
         {{ scenario.customer.name }} печатает…
       </div>
