@@ -2,7 +2,7 @@
 import { createEngineState, respond } from '../engine/dialogueEngine';
 import { evaluateAttempt } from '../engine/evaluationEngine';
 import { pickVariant } from '../engine/responseSelector';
-import type { Attempt, ChatMessage, Difficulty, Requirement, Scenario, Screen } from '../types';
+import type { AnswerFeedback, Attempt, ChatMessage, Difficulty, Requirement, Scenario, Screen } from '../types';
 
 export const newSeed = (): number => Math.floor(Math.random() * 1_000_000) + 1;
 
@@ -71,6 +71,18 @@ export function sendQuestion(attempt: Attempt, scenario: Scenario, text: string,
     factIds: reply.factIds,
   };
   return { attempt: { ...attempt, engine: state, messages: [...attempt.messages, student, customer] }, studentId, customerId };
+}
+
+/** Ставит или снимает (null) оценку ответа заказчика. */
+export function setAnswerFeedback(attempt: Attempt, messageId: string, feedback: Pick<AnswerFeedback, 'rating' | 'reason'> | null): Attempt {
+  return {
+    ...attempt,
+    messages: attempt.messages.map((message) => {
+      if (message.id !== messageId || message.role !== 'customer') return message;
+      const { feedback: _old, ...rest } = message;
+      return feedback ? { ...rest, feedback: { rating: feedback.rating, reason: feedback.reason.trim(), at: new Date().toISOString() } } : rest;
+    }),
+  };
 }
 
 export function addRequirement(

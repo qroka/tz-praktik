@@ -10,8 +10,12 @@ const props = defineProps<{
   highlighted: boolean;
   customerName: string;
   customerInitials: string;
+  /** Ответ можно оценить: ему предшествует вопрос студента. */
+  canRate: boolean;
 }>();
-const emit = defineEmits<{ capture: []; clarify: []; repeat: [] }>();
+const emit = defineEmits<{ capture: []; clarify: []; repeat: []; rate: [rating: 'like' | 'dislike'] }>();
+
+const feedback = computed(() => props.message.feedback);
 
 const QUALITY_NOTE: Partial<Record<MessageQuality, string>> = {
   general: 'Слишком общий вопрос',
@@ -61,8 +65,17 @@ const ui = computed(() => ({
         <UTooltip text="Записать этот ответ в реестр требований"><UButton size="sm" variant="soft" icon="i-lucide-bookmark-plus" label="Сохранить как требование" class="min-h-9" @click="emit('capture')" /></UTooltip>
         <UTooltip v-if="needsFollowUp" text="Задать вопрос именно по этому ответу"><UButton size="sm" color="neutral" variant="ghost" icon="i-lucide-corner-down-right" label="Уточнить" aria-label="Уточнить" class="min-h-9" @click="emit('clarify')" /></UTooltip>
       </template>
+      <template v-if="isCustomer && canRate">
+        <template v-if="!readOnly">
+          <UTooltip text="Ответ соответствует вопросу"><UButton size="sm" square :color="feedback?.rating === 'like' ? 'success' : 'neutral'" :variant="feedback?.rating === 'like' ? 'soft' : 'ghost'" icon="i-lucide-thumbs-up" aria-label="Ответ подходит" :aria-pressed="feedback?.rating === 'like'" class="size-9 justify-center" data-testid="rate-like" @click="emit('rate', 'like')" /></UTooltip>
+          <UTooltip text="Ответ не соответствует вопросу"><UButton size="sm" square :color="feedback?.rating === 'dislike' ? 'error' : 'neutral'" :variant="feedback?.rating === 'dislike' ? 'soft' : 'ghost'" icon="i-lucide-thumbs-down" aria-label="Ответ не подходит" :aria-pressed="feedback?.rating === 'dislike'" class="size-9 justify-center" data-testid="rate-dislike" @click="emit('rate', 'dislike')" /></UTooltip>
+        </template>
+        <UTooltip v-else-if="feedback" :text="feedback.reason || 'Причина не указана'"><UBadge :color="feedback.rating === 'like' ? 'success' : 'error'" variant="subtle" size="sm" :icon="feedback.rating === 'like' ? 'i-lucide-thumbs-up' : 'i-lucide-thumbs-down'" :label="feedback.rating === 'like' ? 'Подходит' : 'Не подходит'" /></UTooltip>
+      </template>
       <UTooltip v-if="!readOnly && !isCustomer && needsFollowUp" text="Вставить этот вопрос в поле ввода ещё раз"><UButton size="sm" color="neutral" variant="ghost" icon="i-lucide-rotate-ccw" label="Повторить" aria-label="Задать снова" class="min-h-9" @click="emit('repeat')" /></UTooltip>
     </div>
+
+    <p v-if="isCustomer && feedback?.reason && !readOnly" class="-mt-1 pb-3 ps-11 text-xs text-muted" data-testid="feedback-reason-text">Ваша оценка: {{ feedback.reason }}</p>
 
     <!-- Оценка вопроса: отдельной строкой по центру, не под сообщением -->
     <div v-if="note" class="flex justify-center pb-3" data-testid="message-note">

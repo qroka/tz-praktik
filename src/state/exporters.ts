@@ -77,6 +77,10 @@ export function toMarkdown(attempt: Attempt, scenario: Scenario): string {
   lines.push('## История переписки', '');
   for (const message of attempt.messages) {
     lines.push(`**${speaker(message, attempt, scenario)}** (${formatDateTime(message.at)}): ${message.text}`, '');
+    if (message.feedback) {
+      const verdict = message.feedback.rating === 'like' ? 'Ответ соответствует вопросу' : 'Ответ не соответствует вопросу';
+      lines.push(`> Оценка студента: ${verdict}${message.feedback.reason ? ` — ${message.feedback.reason}` : ''}`, '');
+    }
   }
 
   if (result) {
@@ -111,7 +115,7 @@ export function toResultJson(attempt: Attempt, scenario: Scenario): string {
       result: attempt.result,
       tz: scenario.tzSections.map((section) => ({ id: section.id, title: section.title, text: attempt.tz[section.id] ?? '' })),
       requirements: attempt.requirements,
-      messages: attempt.messages.map(({ id, role, text, at, quality }) => ({ id, role, text, at, quality })),
+      messages: attempt.messages.map(({ id, role, text, at, quality, intentId, feedback }) => ({ id, role, text, at, quality, intentId, feedback })),
     },
     null,
     2,

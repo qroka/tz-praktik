@@ -11,6 +11,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AnswerFeedbackModal: typeof import('./src/components/chat/AnswerFeedbackModal.vue')['default']
     AppSidebar: typeof import('./src/components/layout/AppSidebar.vue')['default']
     CaseOverview: typeof import('./src/components/onboarding/CaseOverview.vue')['default']
     CategoryProgress: typeof import('./src/components/progress/CategoryProgress.vue')['default']

@@ -10,6 +10,7 @@ import {
   moveRequirementsToSection,
   removeRequirement,
   sendQuestion,
+  setAnswerFeedback,
   setTzText,
   updateRequirement,
   validateAttempt,
@@ -81,6 +82,30 @@ describe('Сохранение состояния', () => {
     saveAttempt(fresh());
     clearAttempt();
     expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
+  });
+});
+
+describe('Оценка ответов заказчика', () => {
+  it('сохраняется в попытке, выгружается и читается обратно', () => {
+    const attempt = dialog(fresh(), ['Какая температура воды нужна после теплообменника?']);
+    const answer = attempt.messages[attempt.messages.length - 1];
+    const rated = setAnswerFeedback(attempt, answer.id, { rating: 'dislike', reason: '  Ответ не по теме ' });
+    const stored = rated.messages.find((m) => m.id === answer.id)!;
+    expect(stored.feedback).toMatchObject({ rating: 'dislike', reason: 'Ответ не по теме' });
+    const parsed = parseProgress(toProgressJson(rated), scenario);
+    expect(parsed.ok && parsed.attempt.messages.find((m) => m.id === answer.id)?.feedback?.rating).toBe('dislike');
+    expect(toMarkdown(rated, scenario)).toContain('Ответ не соответствует вопросу — Ответ не по теме');
+    const exported = JSON.parse(toResultJson(rated, scenario)).messages.find((m: { id: string }) => m.id === answer.id);
+    expect(exported.feedback.rating).toBe('dislike');
+    expect(exported.intentId).toBeTruthy();
+  });
+  it('оценку можно снять, вопросы студента не оцениваются', () => {
+    const attempt = dialog(fresh(), ['Какая температура воды нужна после теплообменника?']);
+    const [, question, answer] = attempt.messages.slice(-3);
+    const liked = setAnswerFeedback(attempt, answer.id, { rating: 'like', reason: '' });
+    expect(liked.messages.find((m) => m.id === answer.id)?.feedback?.rating).toBe('like');
+    expect(setAnswerFeedback(liked, answer.id, null).messages.find((m) => m.id === answer.id)?.feedback).toBeUndefined();
+    expect(setAnswerFeedback(attempt, question.id, { rating: 'like', reason: '' }).messages.find((m) => m.id === question.id)?.feedback).toBeUndefined();
   });
 });
 

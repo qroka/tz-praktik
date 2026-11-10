@@ -33,7 +33,14 @@ export function detectQuestionFrame(normalized: string, concepts: Set<string>) {
   const currentPump = current && has('pump', 'motor', 'vfd') && has('manageword', 'vfd', 'auto', 'manual');
   const currentOperation = (current || !future && has('manual') && !has('modes')) && !has('pump', 'motor', 'hx', 'equipment', 'power', 'room') && (operation || has('object'));
   const mixedModes = !future && !current && has('auto') && has('manual') && !has('alarm');
-  const goal = (/после (внедрения|автоматизации)/.test(text) && /что измен|цель|результат/.test(text)) || /параметр\S* .*контролир/.test(text);
+  // «Что нужно сделать?», «что вы хотите получить?», «что изменить в системе?» без предмета — это цель автоматизации.
+  const wantsGoal =
+    / (что|чего) /.test(text) &&
+    / (нуж\S*|необходим\S*|треб\S*|надо|хотите|хотели|ожидаете|ждете|ждёте) /.test(text) &&
+    / (сделать|изменить|поменять|автоматизировать|получить|улучшить|от системы|от нас) /.test(text) &&
+    !has('temp', 'press', 'flow', 'alarm', 'pump', 'hx', 'valve', 'hmi', 'manual', 'auto', 'modes', 'equipment') &&
+    text.trim().split(/\s+/).length <= 8;
+  const goal = (/после (внедрения|автоматизации)/.test(text) && /что измен|цель|результат/.test(text)) || /параметр\S* .*контролир/.test(text) || wantsGoal;
   // Одно «А после насоса?» без давления в вопросе ничего не спрашивает, пока контекст не подскажет признак.
   const bareSide = /^ (а |и )?(до|после|перед|за) насоса $/.test(text);
   const aspect = detectAspect(text, { current, future, goal });

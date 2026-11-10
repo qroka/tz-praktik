@@ -3,9 +3,10 @@ import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { factById } from '../../engine/factTracker';
 import { prefersReducedMotion, type Layout } from '../../composables/useLayout';
 import { useSession } from '../../composables/useSession';
-import { addRequirement } from '../../state/attempt';
+import { addRequirement, setAnswerFeedback } from '../../state/attempt';
 import RequirementForm, { type RequirementDraft } from '../requirements/RequirementForm.vue';
 import RequirementRegistry from '../requirements/RequirementRegistry.vue';
+import AnswerFeedbackModal from './AnswerFeedbackModal.vue';
 import ChatComposer from './ChatComposer.vue';
 import ChatMessage from './ChatMessage.vue';
 
@@ -16,6 +17,8 @@ const { attempt, scenario, readOnly, hiddenId, highlightId, visibleMessages, sum
 const text = ref('');
 const replyToId = ref<string | null>(null);
 const captureId = ref<string | null>(null);
+const rateId = ref<string | null>(null);
+const rateRating = ref<'like' | 'dislike'>('like');
 const registryOpen = ref(false);
 const caseOpen = ref(false);
 const thread = useTemplateRef<HTMLElement>('thread');
@@ -33,7 +36,36 @@ const captureInitial = computed<RequirementDraft>(() => {
   return { text: message?.text ?? '', category: fact?.category ?? '', needsClarification: false };
 });
 
-const savedCount = (messageId: string) => attempt.value?.requirements.filter((item) => item.sourceMessageId === messageId).length ?? 0;
+const rateMessage = computed(() => (rateId.value ? attempt.value?.messages.find((message) => message.id === rateId.value) : undefined));
+const rateOpen = computed({ get: () => rateId.value !== null, set: (open) => !open && (rateId.value = null) });
+/** Вопрос студента, на который дан оцениваемый ответ: сообщение прямо перед ответом. */
+const questionBefore = (messageId: string) => {
+  const list = attempt.value?.messages ?? [];
+  const index = list.findIndex((message) => message.id === messageId);
+  const previous = index > 0 ? list[index - 1] : undefined;
+  return previous?.role === 'student' ? previous : undefined;
+};
+const rateQuestion = computed(() => (rateId.value ? questionBefore(rateId.value)?.text ?? '' : ''));
+
+function startRate(id: string, rating: 'like' | 'dislike') {
+  rateId.value = id;
+  rateRating.value = rating;
+}
+function saveRate(reason: string) {
+  const id = rateId.value;
+  if (!id) return;
+  update((current) => setAnswerFeedback(current, id, { rating: rateRating.value, reason }));
+  rateId.value = null;
+  notify('success', 'Оценка сохранена');
+}
+function clearRate() {
+  const id = rateId.value;
+  if (!id) return;
+  update((current) => setAnswerFeedback(current, id, null));
+  rateId.value = null;
+}
+
+const savedCount =(messageId: string) => attempt.value?.requirements.filter((item) => item.sourceMessageId === messageId).length ?? 0;
 const quotedOf = (replyId?: string) => (replyId ? attempt.value?.messages.find((message) => message.id === replyId) : null);
 
 // Прокрутка вниз только если студент не ушёл читать историю.
@@ -136,6 +168,8 @@ function saveRequirement(draft: RequirementDraft) {
           :highlighted="highlightId === message.id"
           :customer-name="scenario.customer.name"
           :customer-initials="scenario.customer.initials"
+          :can-rate="Boolean(questionBefore(message.id))"
+          @rate="(rating) => startRate(message.id, rating)"
           @capture="captureId = message.id"
           @clarify="startClarify(message.id)"
           @repeat="repeat(message.text)"
@@ -157,6 +191,17 @@ function saveRequirement(draft: RequirementDraft) {
       submit-label="Сохранить в реестр"
       hint="Перепишите слова заказчика как требование: параметр, значение, единица, условие."
       @submit="saveRequirement"
+    />
+
+    <AnswerFeedbackModal
+      v-model:open="rateOpen"
+      :rating="rateRating"
+      :question="rateQuestion"
+      :answer="rateMessage?.text ?? ''"
+      :initial-reason="rateMessage?.feedback?.reason ?? ''"
+      :has-existing="Boolean(rateMessage?.feedback)"
+      @save="saveRate"
+      @clear="clearRate"
     />
 
     <USlideover v-model:open="registryOpen" side="right" title="Реестр требований" description="Быстрый просмотр и добавление записей" :ui="{ content: 'max-w-md' }">

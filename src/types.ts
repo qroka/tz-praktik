@@ -222,6 +222,9 @@ export type EngineReply = {
 
 // --- Попытка ---
 
+/** Оценка студента: соответствует ли ответ заказчика заданному вопросу. */
+export type AnswerFeedback = { rating: 'like' | 'dislike'; reason: string; at: string };
+
 export type ChatMessage = {
   id: string;
   role: 'student' | 'customer';
@@ -233,6 +236,8 @@ export type ChatMessage = {
   topic?: string | null;
   factIds?: string[];
   replyToId?: string;
+  /** Только у ответов заказчика. */
+  feedback?: AnswerFeedback;
 };
 
 export type Requirement = {
