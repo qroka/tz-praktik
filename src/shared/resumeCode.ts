@@ -1,8 +1,10 @@
-// Личный код попытки: четыре русских слова через дефис, например «лиса-мост-река-замок».
-// Его легко продиктовать и записать. Модуль без зависимостей: им пользуются и сайт, и сервер.
+// Личный код: три русских слова через дефис, например «лиса-мост-река».
+// Его легко продиктовать и записать. Выданные раньше коды из четырёх слов продолжают приниматься.
+// Модуль почти без зависимостей: им пользуются и сайт, и сервер.
+import { EXTRA_WORDS } from './codeWords.ts';
 
-/** Короткие, понятные, не похожие друг на друга существительные. Порядок и состав менять нельзя: по ним расшифровываются выданные коды. */
-export const CODE_WORDS: readonly string[] = [
+/** Первые слова словаря. Удалять слова нельзя: выданные коды перестанут приниматься. Добавлять можно (в codeWords.ts). */
+const BASE_WORDS: readonly string[] = [
   'аист', 'арбуз', 'ананас', 'абрикос', 'автобус', 'август', 'айва', 'актёр', 'банан', 'барсук', 'белка', 'берёза', 'билет', 'бобёр', 'болото', 'бригада',
   'букет', 'буря', 'вагон', 'ветер', 'весна', 'ворона', 'волна', 'ворот', 'гвоздь', 'герой', 'глобус', 'голубь', 'горох', 'гриб', 'груша', 'гусь',
   'дверь', 'дерево', 'дождь', 'доктор', 'дорога', 'дракон', 'дуб', 'дятел', 'ёжик', 'ель', 'ёлка', 'жираф', 'жук', 'журнал', 'завод', 'заяц',
@@ -20,15 +22,22 @@ export const CODE_WORDS: readonly string[] = [
   'гитара', 'гора', 'город', 'гроза', 'дельфин', 'долина', 'дрозд', 'жёлудь', 'жемчуг', 'забор', 'закат', 'кактус', 'канал', 'капуста', 'карта', 'кедр',
   'кино', 'кисть', 'клён', 'колодец', 'компас', 'конь', 'кран', 'крот', 'куст', 'лес', 'лист', 'маяк', 'мельник', 'мрамор', 'мята', 'ножницы',
   'река', 'замок', 'озимь', 'пароход', 'перо', 'пещера', 'пруд', 'пчёлка', 'рябина', 'сарай', 'сокол', 'тайга', 'тетрадь', 'тюлень', 'утёс', 'фиалка', 'шторм',
-]
-  .map((word) => word.toLowerCase())
-  .filter((word, index, all) => all.indexOf(word) === index);
-
-export const CODE_LENGTH = 4;
+];
 
 /** Русский текст без ё, в нижнем регистре: так студент может ввести код как угодно. */
 const plain = (text: string) => text.toLowerCase().replace(/ё/g, 'е');
-const PLAIN_WORDS = CODE_WORDS.map(plain);
+
+/** Словарь: слова не повторяются, в том числе отличающиеся только «ё». Первое написание сохраняется. */
+export const CODE_WORDS: readonly string[] = [...BASE_WORDS, ...EXTRA_WORDS]
+  .map((word) => word.toLowerCase())
+  .filter((word, index, all) => all.findIndex((other) => plain(other) === plain(word)) === index);
+
+const WORD_INDEX = new Map(CODE_WORDS.map((word, index) => [plain(word), index]));
+
+/** Сколько слов в новом коде. */
+export const CODE_LENGTH = 3;
+/** Коды из четырёх слов выдавались раньше и остаются рабочими. */
+export const LEGACY_CODE_LENGTH = 4;
 
 /** Новый случайный код. random(n) должен возвращать целое от 0 до n-1 (на сайте и сервере — криптографический). */
 export function generateCode(random: (max: number) => number): string {
@@ -42,11 +51,11 @@ export function generateCode(random: (max: number) => number): string {
 export function normalizeCode(input: unknown): string | null {
   if (typeof input !== 'string' || input.length > 200) return null;
   const parts = plain(input).split(/[\s\-–—.,;:_/]+/).filter(Boolean);
-  if (parts.length !== CODE_LENGTH) return null;
+  if (parts.length !== CODE_LENGTH && parts.length !== LEGACY_CODE_LENGTH) return null;
   const words: string[] = [];
   for (const part of parts) {
-    const index = PLAIN_WORDS.indexOf(part);
-    if (index < 0) return null;
+    const index = WORD_INDEX.get(part);
+    if (index === undefined) return null;
     words.push(CODE_WORDS[index]);
   }
   return words.join('-');

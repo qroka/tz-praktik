@@ -1,29 +1,48 @@
 import { randomInt } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { CODE_LENGTH, CODE_WORDS, codeEntropyBits, generateCode, normalizeCode } from './resumeCode';
+import { CODE_LENGTH, CODE_WORDS, LEGACY_CODE_LENGTH, codeEntropyBits, generateCode, normalizeCode } from './resumeCode';
 
-describe('Личный код попытки из русских слов', () => {
-  it('в словаре достаточно слов, и они не совпадают даже без «ё»', () => {
-    expect(CODE_WORDS.length).toBeGreaterThanOrEqual(256);
+describe('Личный код из русских слов', () => {
+  it('в словаре не меньше 1900 слов, они не совпадают даже без «ё» и пригодны для диктовки', () => {
+    expect(CODE_WORDS.length).toBeGreaterThanOrEqual(1900);
     const plain = CODE_WORDS.map((w) => w.replace(/ё/g, 'е'));
     expect(new Set(plain).size).toBe(plain.length);
-    for (const word of CODE_WORDS) expect(word).toMatch(/^[а-яё]{2,12}$/);
+    for (const word of CODE_WORDS) expect(word, word).toMatch(/^[а-яё]{3,12}$/);
   });
-  it('даёт не меньше 32 бит случайности', () => expect(codeEntropyBits()).toBeGreaterThanOrEqual(32));
-  it('сгенерированный код состоит из четырёх слов и сам себя распознаёт', () => {
-    for (let i = 0; i < 200; i++) {
+
+  it('три слова дают не меньше 32 бит случайности', () => {
+    expect(CODE_LENGTH).toBe(3);
+    expect(codeEntropyBits()).toBeGreaterThanOrEqual(32);
+  });
+
+  it('все слова прежнего словаря сохранены: выданные коды должны продолжать работать', () => {
+    const issued = ['лиса', 'мост', 'река', 'замок', 'рябина', 'белка', 'актёр', 'шнур', 'мрамор', 'дуб', 'фрукт', 'табурет', 'костёр', 'порог', 'барсук', 'метро', 'волна', 'ветер', 'тропа'];
+    for (const word of issued) expect(CODE_WORDS, word).toContain(word);
+  });
+
+  it('новый код — три слова, и он сам себя распознаёт', () => {
+    for (let i = 0; i < 300; i++) {
       const code = generateCode((n) => randomInt(n));
       expect(code.split('-')).toHaveLength(CODE_LENGTH);
       expect(normalizeCode(code)).toBe(code);
     }
   });
-  it('принимает любой регистр, пробелы и «е» вместо «ё»', () => {
-    expect(normalizeCode('Лиса мост, РЕКА   замок')).toBe('лиса-мост-река-замок');
-    expect(normalizeCode('ЛИСА–МОСТ–ЕЛКА–ЗАМОК')).toBe('лиса-мост-ёлка-замок');
+
+  it('коды из четырёх слов, выданные раньше, принимаются', () => {
+    expect(LEGACY_CODE_LENGTH).toBe(4);
+    expect(normalizeCode('рябина-белка-актёр-шнур')).toBe('рябина-белка-актёр-шнур');
+    expect(normalizeCode('Рябина белка актер шнур')).toBe('рябина-белка-актёр-шнур');
   });
+
+  it('принимает любой регистр, разделители и «е» вместо «ё»', () => {
+    expect(normalizeCode('Лиса мост, РЕКА')).toBe('лиса-мост-река');
+    expect(normalizeCode('ЛИСА–МОСТ–ЕЛКА')).toBe('лиса-мост-ёлка');
+    expect(normalizeCode('  лиса . мост ; река ')).toBe('лиса-мост-река');
+  });
+
   it('отклоняет чужие слова, неверное число слов и не строки', () => {
-    for (const bad of ['', 'лиса-мост-река', 'лиса-мост-река-замок-сад', 'лиса-мост-река-абракадабра', 'a-b-c-d', null, 42, 'я'.repeat(300)]) {
-      expect(normalizeCode(bad as unknown)).toBeNull();
+    for (const bad of ['', 'лиса', 'лиса-мост', 'лиса-мост-река-замок-сад', 'лиса-мост-абракадабра', 'a-b-c', null, 42, 'я'.repeat(300)]) {
+      expect(normalizeCode(bad as unknown), String(bad)).toBeNull();
     }
   });
 });

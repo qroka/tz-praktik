@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { adminApi } from '../api/client';
+import SecretCode from '../components/student/SecretCode.vue';
 import { dateTime, downloadFromServer, filterParams, gradeColor, groupItems, type GroupInfo } from './format';
 
 type Row = {
@@ -211,9 +212,7 @@ const codesPath = (group?: string | null) => `/admin/students/codes.xlsx?${filte
             <td class="p-2 font-medium">{{ row.fullName }}</td>
             <td class="p-2 whitespace-nowrap"><span v-if="row.group">{{ row.group }}</span><UBadge v-else label="без группы" color="warning" variant="subtle" size="sm" /></td>
             <td class="p-2">
-              <button type="button" class="inline-flex items-center gap-1 rounded text-left hover:text-highlighted" title="Скопировать код" :data-testid="`student-code-${row.id}`" @click="copy(row.code, 'Код скопирован')">
-                <span class="break-words">{{ row.code }}</span><UIcon name="i-lucide-copy" class="size-3.5 shrink-0 text-dimmed" />
-              </button>
+              <SecretCode :code="row.code" :testid="`student-code-${row.id}`" @copy="copy(row.code, 'Код скопирован')" />
             </td>
             <td class="p-2 tabular-nums">{{ row.finished }} / {{ row.attempts }}</td>
             <td class="p-2"><UBadge v-if="row.bestScore !== null" :label="String(row.bestScore)" :color="gradeColor(row.bestScore)" variant="subtle" /><span v-else class="text-muted">—</span></td>

@@ -61,7 +61,7 @@ export function useStudent() {
   }
 
   async function login(input: string): Promise<Result> {
-    if (!normalizeCode(input)) return { ok: false, error: 'Введите четыре слова кода: через пробел или дефис, например «лиса мост река замок».' };
+    if (!normalizeCode(input)) return { ok: false, error: 'Введите три слова кода: через пробел или дефис, например «лиса мост река».' };
     try {
       const result = await studentApi.login(input);
       await adopt({ token: result.token, student: result.student });

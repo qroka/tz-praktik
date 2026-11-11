@@ -71,7 +71,7 @@ const MIGRATIONS: string[] = [
   CREATE INDEX idx_feedback_scenario ON feedback(scenario_id, rating);
   CREATE INDEX idx_feedback_at ON feedback(at);
   `,
-  // 3: личный код попытки (четыре русских слова) и номер версии: защита от затирания с двух устройств.
+  // 3: личный код попытки (русские слова) и номер версии: защита от затирания с двух устройств.
   `
   ALTER TABLE attempts ADD COLUMN resume_code TEXT;
   ALTER TABLE attempts ADD COLUMN rev INTEGER NOT NULL DEFAULT 0;

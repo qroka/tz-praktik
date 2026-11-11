@@ -52,7 +52,7 @@ async function call(method: string, path: string, body?: unknown, extra: Record<
   return { status: response.status, data, headers: response.headers };
 }
 
-/** Номер попытки: четыре слова, разные для разных seed (его, как и на сайте, выдаёт клиент). */
+/** Номер попытки: слова через дефис, разные для разных seed (его, как и на сайте, выдаёт клиент). */
 const codeFor = (seed: number) => [0, 1, 2, 3].map((i) => CODE_WORDS[(seed * 7 + i * 31) % CODE_WORDS.length]).join('-');
 
 const attempt = (overrides: Record<string, unknown> = {}) => ({

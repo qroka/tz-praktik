@@ -69,7 +69,7 @@ let ivanov = { token: '', code: '', id: 0 };
 let petrova = { token: '', code: '', id: 0 };
 
 describe('Регистрация студента', () => {
-  it('ФИО и группа создают аккаунт с кодом из четырёх слов и входом', async () => {
+  it('ФИО и группа создают аккаунт с кодом из трёх слов и входом', async () => {
     const response = await register('Иванов Иван', 'ИС-21');
     expect(response.status).toBe(200);
     const { student, token } = response.data;

@@ -4,6 +4,7 @@ import { useSession } from '../../composables/useSession';
 import { useStudent } from '../../composables/useStudent';
 import type { HistoryItem } from '../../api/student';
 import TzLogo from '../layout/TzLogo.vue';
+import SecretCode from './SecretCode.vue';
 
 const { copyText } = useSession();
 const { student, history, historyState, historyError, currentScenario, refreshHistory, logout, startNew, open } = useStudent();
@@ -71,10 +72,7 @@ const statusOf = (item: HistoryItem) => (item.finishedAt ? { label: 'Завер�
       </div>
       <div class="space-y-1 sm:text-right">
         <p class="text-xs font-semibold tracking-wide text-dimmed uppercase">Код для входа</p>
-        <button type="button" class="inline-flex items-center gap-2 rounded-md text-left font-semibold hover:text-highlighted focus-visible:outline-2" title="Скопировать код" data-testid="cabinet-code" @click="copyText(student.code, 'Код скопирован')">
-          <span class="break-words">{{ student.code }}</span>
-          <UIcon name="i-lucide-copy" class="size-4 shrink-0 text-dimmed" />
-        </button>
+        <SecretCode :code="student.code" testid="cabinet-code" align="end" @copy="copyText(student.code, 'Код скопирован')" />
       </div>
     </UCard>
 
