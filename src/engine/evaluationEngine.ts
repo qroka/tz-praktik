@@ -280,7 +280,7 @@ export function evaluateAttempt(attempt: Attempt, scenario: Scenario): Evaluatio
   add(copied.length > 1, 'В ТЗ есть разговорная речь. Перепишите фразы заказчика как требования: «Система должна…».');
   add(brands.length > 0, 'Не указывайте конкретные модели без обоснования. Сформулируйте характеристики или отметьте «или аналог».');
   add(contradictions.length > 0, 'В записях есть противоречия со словами заказчика. Сверьте значения с перепиской.');
-  if (recommendations.length === 0) recommendations.push('Работа выполнена хорошо. Сверьте формулировки с эталоном ниже.');
+  if (recommendations.length === 0) recommendations.push('Работа выполнена хорошо. Перечитайте итоговое ТЗ ещё раз: проверьте формулировки и значения.');
 
   // --- Эталон ---
   const etalon: EtalonRow[] = scenario.facts.map((fact) => ({

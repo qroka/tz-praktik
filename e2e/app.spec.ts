@@ -154,7 +154,7 @@ test('5. Реестр: фиксация, правка, фильтры, объе�
   await expect(page.locator('.msg-highlight')).toBeVisible();
 });
 
-test('6–7. ТЗ: 13 разделов, перенос, завершение, оценка, эталон', async ({ page }) => {
+test('6–7. ТЗ: 13 разделов, перенос, завершение, оценка', async ({ page }) => {
   await start(page);
   await ask(page, 'Какая температура воды нужна после теплообменника?');
   await capture(page, 'Поддерживать температуру воды после теплообменника 60 °C', 'Регулируемые параметры');
@@ -185,8 +185,9 @@ test('6–7. ТЗ: 13 разделов, перенос, завершение, о
   await expect(page.getByTestId('final-tz')).toContainText('Система автоматического управления');
   await page.getByRole('button', { name: /Полезные вопросы/ }).click();
   await expect(page.getByTestId('useful-questions')).toContainText('Какая модель контроллера нужна?');
-  await page.getByRole('button', { name: /Эталон сведений/ }).click();
-  await expect(page.getByTestId('etalon')).toContainText('Аварийная температура');
+  // Эталонные ответы студенту не показываются.
+  await expect(page.getByRole('button', { name: /Эталон/ })).toHaveCount(0);
+  await expect(page.getByTestId('etalon')).toHaveCount(0);
   await page.getByRole('button', { name: /История переписки/ }).click();
   await expect(page.getByTestId('transcript')).toContainText('Какая модель контроллера нужна?');
 });

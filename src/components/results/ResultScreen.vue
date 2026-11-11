@@ -8,7 +8,7 @@ import { difficultyLabel } from '../../state/exporters';
 const { attempt, scenario, serverEnabled, leaveAttempt } = useSession();
 const result = computed(() => attempt.value!.result!);
 
-const ALL_ITEMS = ['parts', 'contradictions', 'useful', 'general', 'tz', 'transcript', 'etalon'];
+const ALL_ITEMS = ['parts', 'contradictions', 'useful', 'general', 'tz', 'transcript'];
 const open = ref<string[]>(['tz']);
 let beforePrint: string[] = [];
 
@@ -48,11 +48,8 @@ const items = computed<AccordionItem[]>(() => [
   { label: `Слишком общие вопросы: ${result.value.generalQuestions.length}`, icon: 'i-lucide-circle-help', value: 'general', slot: 'general' },
   { label: `Итоговое ТЗ · заполнено ${filledSections.value} из ${scenario.tzSections.length}`, icon: 'i-lucide-file-text', value: 'tz', slot: 'tz' },
   { label: `История переписки · сообщений: ${attempt.value!.messages.length}`, icon: 'i-lucide-messages-square', value: 'transcript', slot: 'transcript' },
-  { label: `Эталон сведений об объекте · ${result.value.etalon.length}`, icon: 'i-lucide-book-check', value: 'etalon', slot: 'etalon' },
 ]);
 
-const sortedEtalon = computed(() => [...result.value.etalon].sort((a, b) => a.section - b.section));
-const typeLabel = (type: string) => (type === 'mandatory' ? 'Требование' : type === 'preference' ? 'Пожелание' : 'Предложение');
 </script>
 
 <template>
@@ -163,29 +160,6 @@ const typeLabel = (type: string) => (type === 'mandatory' ? 'Требовани�
               <dd class="whitespace-pre-wrap">{{ message.text }}</dd>
             </div>
           </dl>
-        </template>
-
-        <template #etalon-body>
-          <div data-testid="etalon" class="space-y-3">
-            <p class="text-sm text-muted">Открывается только после завершения попытки. Сверьте значения со своим ТЗ.</p>
-            <div class="overflow-x-auto">
-              <table class="w-full min-w-[640px] text-sm">
-                <thead>
-                  <tr class="text-left text-muted"><th class="py-1 pr-2 font-medium">Раздел</th><th class="py-1 pr-2 font-medium">Сведение и значение</th><th class="py-1 pr-2 font-medium">Тип</th><th class="py-1 pr-2 font-medium">В диалоге</th><th class="py-1 pr-2 font-medium">В реестре</th><th class="py-1 font-medium">В ТЗ</th></tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in sortedEtalon" :key="row.factId" class="border-t border-default align-top">
-                    <td class="py-2 pr-2">{{ row.section }}</td>
-                    <td class="py-2 pr-2"><strong>{{ row.label }}.</strong> {{ row.value }}</td>
-                    <td class="py-2 pr-2">{{ typeLabel(row.requirementType) }}</td>
-                    <td v-for="(flag, index) in [row.disclosed, row.inRegistry, row.inTz]" :key="index" class="py-2 pr-2">
-                      <UBadge :color="flag ? 'primary' : 'neutral'" variant="subtle" size="sm" :icon="flag ? 'i-lucide-check' : 'i-lucide-minus'" :label="flag ? 'да' : 'нет'" />
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
         </template>
       </UAccordion>
     </div>

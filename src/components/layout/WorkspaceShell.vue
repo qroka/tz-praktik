@@ -134,7 +134,7 @@ function confirmImport() {
       </p>
     </ConfirmDialog>
     <ConfirmDialog v-model:open="finishOpen" title="Завершить попытку?" confirm-label="Завершить и получить оценку" cancel-label="Вернуться" @confirm="confirmFinish">
-      <p>После завершения откроется эталон, а изменить ответы будет нельзя.</p>
+      <p>После завершения откроется оценка, а изменить ответы будет нельзя.</p>
       <UAlert
         v-if="emptySections.length > 0"
         color="warning"
