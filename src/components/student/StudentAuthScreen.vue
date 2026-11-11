@@ -73,8 +73,8 @@ function switchMode(next: 'login' | 'register') {
 
           <template v-else>
             <div class="grid grid-cols-2 gap-1 rounded-lg bg-elevated/60 p-1" role="tablist" aria-label="Вход или регистрация">
-              <UButton :color="mode === 'login' ? 'primary' : 'neutral'" :variant="mode === 'login' ? 'soft' : 'ghost'" label="У меня есть код" role="tab" :aria-selected="mode === 'login'" data-testid="tab-login" @click="switchMode('login')" />
-              <UButton :color="mode === 'register' ? 'primary' : 'neutral'" :variant="mode === 'register' ? 'soft' : 'ghost'" label="Регистрация" role="tab" :aria-selected="mode === 'register'" data-testid="tab-register" @click="switchMode('register')" />
+              <UButton :color="mode === 'login' ? 'primary' : 'neutral'" :variant="mode === 'login' ? 'soft' : 'ghost'" label="У меня есть код" class="justify-center" role="tab" :aria-selected="mode === 'login'" data-testid="tab-login" @click="switchMode('login')" />
+              <UButton :color="mode === 'register' ? 'primary' : 'neutral'" :variant="mode === 'register' ? 'soft' : 'ghost'" label="Регистрация" class="justify-center" role="tab" :aria-selected="mode === 'register'" data-testid="tab-register" @click="switchMode('register')" />
             </div>
 
             <UAlert v-if="expiredNotice" color="warning" variant="subtle" icon="i-lucide-key-round" title="Нужно войти снова" description="Сессия закончилась или преподаватель выдал вам новый код. Введите актуальный код." />
@@ -87,7 +87,7 @@ function switchMode(next: 'login' | 'register') {
               <UFormField label="Личный код" name="code">
                 <UInput v-model="loginState.code" size="xl" class="w-full" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="лиса мост река" data-testid="login-code" />
               </UFormField>
-              <UButton type="submit" size="xl" block :loading="busy" :disabled="!loginState.code.trim()" trailing-icon="i-lucide-log-in" label="Войти" data-testid="login-submit" />
+              <UButton type="submit" size="xl" block class="justify-center" :ui="{ trailingIcon: 'ms-0' }" :loading="busy" :disabled="!loginState.code.trim()" trailing-icon="i-lucide-log-in" label="Войти" data-testid="login-submit" />
             </UForm>
 
             <UForm v-else :state="registerState" :validate="validateRegister" :validate-on="['blur', 'change']" class="space-y-5" @submit="submitRegister">
@@ -102,7 +102,7 @@ function switchMode(next: 'login' | 'register') {
                 <UInput v-model="registerState.group" size="xl" class="w-full" list="student-groups" autocomplete="off" :maxlength="40" placeholder="Например, ИС-21" data-testid="register-group" />
                 <datalist id="student-groups"><option v-for="g in groups" :key="g" :value="g" /></datalist>
               </UFormField>
-              <UButton type="submit" size="xl" block :loading="busy" trailing-icon="i-lucide-arrow-right" label="Зарегистрироваться" data-testid="register-submit" />
+              <UButton type="submit" size="xl" block class="justify-center" :ui="{ trailingIcon: 'ms-0' }" :loading="busy" trailing-icon="i-lucide-arrow-right" label="Зарегистрироваться" data-testid="register-submit" />
             </UForm>
 
             <UAlert v-if="error" color="error" variant="subtle" icon="i-lucide-circle-alert" :description="error" role="alert" data-testid="auth-error" />

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { useMediaQuery } from '@vueuse/core';
 import { minSectionWords } from '../../data/evaluation';
 import { useLayout } from '../../composables/useLayout';
 import { useSession } from '../../composables/useSession';
@@ -31,8 +32,10 @@ const showSide = computed(() => layout.value === 'wide' && withProgress.value);
 const sideIsRegistry = computed(() => screen.value === 'tz');
 const showToggle = computed(() => layout.value !== 'wide' && withProgress.value);
 
-/** Верхней панели нет на широком экране; ниже она нужна только для кнопки меню и кнопки прогресса. */
-const showBar = computed(() => layout.value === 'compact' || showToggle.value);
+// Боковое меню выезжает поверх страницы на экранах уже 1024 px (lg у Nuxt UI): там без верхней панели его не открыть.
+const sidebarOffCanvas = useMediaQuery('(max-width: 1023px)');
+/** Верхней панели нет на широком экране; ниже она нужна для кнопки меню и кнопки прогресса. */
+const showBar = computed(() => layout.value === 'compact' || sidebarOffCanvas.value || showToggle.value);
 const sidebarOpen = ref(false);
 const progressOpen = ref(false);
 const confirm = ref<'reset' | 'finish' | null>(null);

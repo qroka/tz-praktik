@@ -1,13 +1,53 @@
 <script setup lang="ts">
 // Каркас стартовой страницы: шапка, блок с формой входа, описание тренажёра и кейса.
 // Форма входа (или ввод имени без сервера) передаётся в слот «auth».
+import { computed } from 'vue';
+import type { DropdownMenuItem } from '@nuxt/ui';
 import { useSession } from '../../composables/useSession';
 import { useTheme } from '../../composables/useTheme';
 import { prefersReducedMotion } from '../../composables/useLayout';
+import { themeAccent, type TzThemePreset } from '../../theme/themes';
 import TzLogo from '../layout/TzLogo.vue';
 
 const { scenario } = useSession();
-const { isDark, toggleMode } = useTheme();
+const { isDark, toggleMode, presets, preset, preference, selectPreset, setMode } = useTheme();
+
+// Цветовая тема: тот же список готовых тем, что в меню профиля, значок красится цветом темы.
+const chipStyle = (p: TzThemePreset) => ({ color: themeAccent(p), background: `color-mix(in oklab, ${themeAccent(p)} 20%, transparent)` });
+const presetOf = (item: unknown) => presets.find((p) => p.id === (item as { presetId?: string }).presetId) ?? presets[0]!;
+const keep = (event: Event) => event.preventDefault();
+const modes = [
+  { value: 'light', icon: 'i-lucide-sun', label: 'Светлая' },
+  { value: 'dark', icon: 'i-lucide-moon', label: 'Тёмная' },
+  { value: 'auto', icon: 'i-lucide-monitor', label: 'Системная' },
+] as const;
+const currentMode = computed(() => modes.find((m) => m.value === preference.value) ?? modes[1]);
+
+// Меню такое же, как у профиля внутри приложения: выбор готовой темы (подменю) и режим оформления.
+const themeItems = computed<DropdownMenuItem[][]>(() => [
+  [
+    {
+      label: preset.value.name,
+      slot: 'preset',
+      presetId: preset.value.id,
+      class: 'font-semibold',
+      content: { class: 'w-44 z-50' },
+      children: presets.map((p) => ({
+        label: p.name,
+        slot: 'preset',
+        presetId: p.id,
+        type: 'checkbox' as const,
+        class: 'font-semibold',
+        checked: preset.value.id === p.id,
+        onUpdateChecked(checked: boolean) {
+          if (checked) selectPreset(p.id);
+        },
+        onSelect: keep,
+      })),
+    },
+  ],
+  [{ slot: 'color-mode', type: 'label', class: 'p-1.5 text-sm font-normal' }],
+]);
 
 const NAV = [
   { id: 'how', label: 'Как это работает' },
@@ -51,6 +91,41 @@ function toAuth() {
           <UButton v-for="item in NAV" :key="item.id" color="neutral" variant="ghost" :label="item.label" @click="scrollTo(item.id)" />
         </nav>
         <div class="ms-auto flex items-center gap-2">
+          <UDropdownMenu :items="themeItems" :content="{ align: 'end' }" :ui="{ content: 'w-60 z-50' }">
+            <UTooltip :text="`Цветовая тема: ${preset.name}`">
+              <UButton color="neutral" variant="ghost" square aria-label="Выбрать цветовую тему" class="data-[state=open]:bg-elevated" data-testid="landing-theme">
+                <UIcon :name="preset.icon" class="size-5 shrink-0" :style="{ color: themeAccent(preset) }" />
+              </UButton>
+            </UTooltip>
+            <template #preset-leading="{ item }">
+              <span class="flex size-5 shrink-0 items-center justify-center rounded-full" :style="chipStyle(presetOf(item))">
+                <UIcon :name="presetOf(item).icon" class="size-2.5" />
+              </span>
+            </template>
+            <template #preset-trailing="{ item }">
+              <UIcon v-if="(item as any).children" name="i-lucide-chevron-right" class="ms-auto size-4 text-dimmed" />
+            </template>
+            <template #color-mode>
+              <div class="flex w-full items-center gap-1.5 text-sm font-normal text-default">
+                <UIcon :name="currentMode.icon" class="size-5 shrink-0 text-dimmed" />
+                {{ currentMode.label }}
+                <div role="tablist" aria-label="Режим оформления" class="relative -my-1.5 ms-auto flex rounded-lg bg-elevated/50 p-0.5">
+                  <UTooltip v-for="m in modes" :key="m.value" :text="m.label">
+                    <button
+                      type="button"
+                      role="tab"
+                      :aria-selected="preference === m.value"
+                      :aria-label="m.label"
+                      :class="['flex rounded-md p-1.5 transition-colors', preference === m.value ? 'bg-default text-highlighted shadow-xs' : 'text-muted hover:text-default']"
+                      @click.stop="setMode(m.value)"
+                    >
+                      <UIcon :name="m.icon" class="size-4" />
+                    </button>
+                  </UTooltip>
+                </div>
+              </div>
+            </template>
+          </UDropdownMenu>
           <UTooltip :text="isDark ? 'Светлая тема' : 'Тёмная тема'">
             <UButton color="neutral" variant="ghost" square :icon="isDark ? 'i-lucide-sun' : 'i-lucide-moon'" :aria-label="isDark ? 'Включить светлую тему' : 'Включить тёмную тему'" @click="toggleMode" />
           </UTooltip>

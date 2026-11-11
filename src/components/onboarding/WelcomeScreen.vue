@@ -35,7 +35,7 @@ function onFile(event: Event) {
           <UFormField label="Имя студента" name="name" required>
             <UInput v-model="state.name" size="xl" class="w-full" autocomplete="name" :maxlength="80" placeholder="Например, Ирина Петрова" />
           </UFormField>
-          <UButton type="submit" size="xl" block trailing-icon="i-lucide-arrow-right" label="Начать тренировку" />
+          <UButton type="submit" size="xl" block class="justify-center" :ui="{ trailingIcon: 'ms-0' }" trailing-icon="i-lucide-arrow-right" label="Начать тренировку" />
         </UForm>
         <USeparator />
         <div class="space-y-3">

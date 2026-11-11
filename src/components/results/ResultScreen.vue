@@ -5,7 +5,7 @@ import { formatTime } from '../../composables/useLayout';
 import { useSession } from '../../composables/useSession';
 import { difficultyLabel } from '../../state/exporters';
 
-const { attempt, scenario } = useSession();
+const { attempt, scenario, serverEnabled, leaveAttempt } = useSession();
 const result = computed(() => attempt.value!.result!);
 
 const ALL_ITEMS = ['parts', 'contradictions', 'useful', 'general', 'tz', 'transcript', 'etalon'];
@@ -58,6 +58,9 @@ const typeLabel = (type: string) => (type === 'mandatory' ? 'Требовани�
 <template>
   <div class="overflow-y-auto print-flow h-full min-h-0 p-4 sm:p-6">
     <div class="mx-auto max-w-5xl space-y-4 pb-6" data-testid="result">
+      <div v-if="serverEnabled" class="no-print">
+        <UButton color="neutral" variant="ghost" icon="i-lucide-arrow-left" label="Личный кабинет" data-testid="back-to-cabinet" @click="leaveAttempt" />
+      </div>
       <UCard :ui="{ body: 'grid gap-6 p-5 sm:p-6 md:grid-cols-[auto_1fr]' }" aria-label="Итоговая оценка">
         <div class="flex items-center gap-4">
           <p class="text-6xl font-bold tracking-tight text-primary" data-testid="score">{{ result.total }}<small class="ml-1 text-lg font-medium text-muted">из 100</small></p>
