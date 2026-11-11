@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { watch } from 'vue';
+import { computed, defineAsyncComponent, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { ru } from '@nuxt/ui/locale';
 import { useSession } from './composables/useSession';
 import { useTheme } from './composables/useTheme';
 import WelcomeScreen from './components/onboarding/WelcomeScreen.vue';
 import WorkspaceShell from './components/layout/WorkspaceShell.vue';
 
+const AdminApp = defineAsyncComponent(() => import('./admin/AdminApp.vue'));
+const route = useRoute();
+const isAdmin = computed(() => route.path.startsWith('/admin'));
 const { attempt, notice } = useSession();
 const toast = useToast();
 useTheme().install();
@@ -25,7 +29,8 @@ watch(notice, (value) => {
 
 <template>
   <UApp :locale="ru" :toaster="{ position: 'bottom-center', ui: { viewport: 'bottom-32' } }">
-    <WorkspaceShell v-if="attempt" />
+    <AdminApp v-if="isAdmin" />
+    <WorkspaceShell v-else-if="attempt" />
     <WelcomeScreen v-else />
   </UApp>
 </template>

@@ -1,7 +1,8 @@
 // Состояние текущей попытки: единственный источник правды интерфейса.
 // Бизнес-логика остаётся в чистых модулях src/engine и src/state.
 import { computed, ref, shallowRef, watch } from 'vue';
-import { scenario } from '../data/activeScenario';
+import { needsSync, sendAttempt } from '../api/sync';
+import { scenario, serverConnected } from '../data/activeScenario';
 import { createAttempt, finishAttempt, newSeed, sendQuestion, setScreen } from '../state/attempt';
 import { downloadFile, parseProgress, progressFileName, toProgressJson } from '../state/exporters';
 import { buildHint, summarizeProgress } from '../state/learningProgress';
@@ -23,6 +24,7 @@ const notice = ref<Notice | null>(null);
 let noticeCounter = 0;
 let typingTimer = 0;
 let saveTimer = 0;
+let syncTimer = 0;
 
 function notify(kind: Notice['kind'], title: string, description?: string) {
   notice.value = { id: ++noticeCounter, kind, title, description };
@@ -53,6 +55,19 @@ watch(
   },
   { flush: 'post' },
 );
+
+// Передача попытки преподавателю: с задержкой после изменений, а итог — сразу при завершении.
+watch(
+  attempt,
+  (current) => {
+    window.clearTimeout(syncTimer);
+    if (!current || !serverConnected || current.finishedAt || !current.messages.some((m) => m.role === 'student')) return;
+    syncTimer = window.setTimeout(() => void sendAttempt(current), 6000);
+  },
+  { flush: 'post' },
+);
+
+if (attempt.value && needsSync(attempt.value)) void sendAttempt(attempt.value);
 
 function update(change: (current: Attempt) => Attempt) {
   if (attempt.value) attempt.value = change(attempt.value);
@@ -112,12 +127,21 @@ export function useSession() {
   function finish() {
     window.clearTimeout(typingTimer);
     hiddenId.value = null;
+    window.clearTimeout(syncTimer);
     update((a) => finishAttempt(a, scenario));
+    const done = attempt.value;
+    if (done && serverConnected) {
+      void sendAttempt(done).then((ok) => {
+        if (ok) notify('success', 'Результат отправлен преподавателю');
+        else notify('info', 'Результат пока не отправлен', 'Он сохранён в браузере и уйдёт при следующем открытии сайта. Можно скачать файл прогресса.');
+      });
+    }
   }
 
   function reset() {
     window.clearTimeout(typingTimer);
     window.clearTimeout(saveTimer);
+    window.clearTimeout(syncTimer);
     clearAttempt();
     attempt.value = null;
     hiddenId.value = null;

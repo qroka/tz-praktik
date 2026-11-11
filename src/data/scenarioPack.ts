@@ -5,6 +5,7 @@ import type {
   Ambiguity, Category, Confidence, DisclosureLevel, FactClaim, Intent, MetaReplies, ReplyStep, RequirementType, Scenario, ScenarioFact,
   TopicContext, UncertaintyKind, UnknownTopic, Unit,
 } from '../types';
+import { createEngineState, respond } from '../engine/dialogueEngine';
 import { normalizeText, tokenize } from '../engine/normalizeText';
 import { intents as baseIntents, lexicon as baseLexicon } from './intents';
 import { meta as baseMeta, replies as baseReplies } from './responses';
@@ -309,4 +310,25 @@ export function buildScenarioFromPack(pack: ScenarioPack): { scenario: Scenario;
     evaluation: { warnAlarmFacts, builtInMixups: false },
   };
   return { scenario, report };
+}
+
+/** Каждый вопрос из файла задаётся «студентом» в новой беседе: ответ должен раскрыть своё сведение. */
+export function checkRecognition(scenario: Scenario, pack: ScenarioPack): { total: number; misses: string[] } {
+  const misses: string[] = [];
+  let total = 0;
+  for (const fact of pack.facts) {
+    for (const question of fact.questions) {
+      total++;
+      let state = createEngineState();
+      for (const id of fact.prerequisites ?? []) {
+        const pre = pack.facts.find((f) => f.id === id);
+        if (pre) state = respond(state, { text: pre.questions[0], seed: 1, difficulty: 'learning' }, scenario).state;
+      }
+      const out = respond(state, { text: question, seed: 1, difficulty: 'learning' }, scenario);
+      if (!out.reply.factIds.includes(fact.id) && out.reply.intentId !== fact.id && out.reply.uncertainty?.id !== fact.id) {
+        misses.push(`${fact.id}: «${question}» → ${out.reply.intentId ?? 'не понят'} (${out.reply.text.slice(0, 50)})`);
+      }
+    }
+  }
+  return { total, misses };
 }

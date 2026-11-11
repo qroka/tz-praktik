@@ -49,7 +49,7 @@ const kinds = [
     <UCard :ui="{ body: 'space-y-3 p-5' }" aria-label="Как вести разговор">
       <h3 class="font-semibold">С чего начать</h3>
       <p class="text-sm text-muted" data-testid="example-question">
-        Например: «Здравствуйте! Расскажите, пожалуйста, из чего состоит узел и что вы хотите автоматизировать?» Дальше спрашивайте по одной теме за раз.
+        Например: «Здравствуйте! Расскажите, пожалуйста, из чего состоит объект и что вы хотите автоматизировать?» Дальше спрашивайте по одной теме за раз.
       </p>
       <ul class="grid gap-2 sm:grid-cols-3" aria-label="Виды сведений">
         <li v-for="kind in kinds" :key="kind.title" class="flex gap-2 text-sm">

@@ -1,30 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import sample from './fixtures/sample-pack.json';
-import { buildScenarioFromPack, validatePack, type ScenarioPack } from './scenarioPack';
+import { buildScenarioFromPack, checkRecognition, validatePack, type ScenarioPack } from './scenarioPack';
 import { createEngineState, respond } from '../engine/dialogueEngine';
-import type { Scenario } from '../types';
 
-/** Каждый вопрос из файла задаётся «студентом» в новой беседе: ответ должен раскрыть своё сведение. */
-function recognition(scenario: Scenario, pack: ScenarioPack) {
-  const misses: string[] = [];
-  let total = 0;
-  for (const fact of pack.facts) {
-    for (const question of fact.questions) {
-      total++;
-      let state = createEngineState();
-      for (const id of fact.prerequisites ?? []) {
-        const pre = pack.facts.find((f) => f.id === id)!;
-        state = respond(state, { text: pre.questions[0], seed: 1, difficulty: 'learning' }, scenario).state;
-      }
-      const out = respond(state, { text: question, seed: 1, difficulty: 'learning' }, scenario);
-      if (!out.reply.factIds.includes(fact.id) && out.reply.intentId !== fact.id && out.reply.uncertainty?.id !== fact.id) {
-        misses.push(`${fact.id}: «${question}» → ${out.reply.intentId ?? 'не понят'} (${out.reply.text.slice(0, 50)})`);
-      }
-    }
-  }
-  return { total, misses };
-}
+const recognition = checkRecognition;
 
 describe('Сборка сценария из файла (пример)', () => {
   const pack = sample as unknown as ScenarioPack;

@@ -14,11 +14,12 @@ export default defineConfig({
       ui: { colors: { primary: 'emerald', neutral: 'slate' } },
     }),
   ],
-  server: { host: '127.0.0.1', port: 5173, strictPort: false },
+  // В разработке запросы к API уходят на локальный сервер (npm run server).
+  server: { host: '127.0.0.1', port: 5173, strictPort: false, proxy: { '/api': 'http://127.0.0.1:3000' } },
   preview: { host: '127.0.0.1' },
   test: {
     environment: 'jsdom',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'server/**/*.test.ts'],
     globals: false,
   },
 });
