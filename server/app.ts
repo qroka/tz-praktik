@@ -5,12 +5,16 @@ import { extname, join, normalize, sep } from 'node:path';
 import { clearCookie, createSession, createUser, destroySession, destroyUserSessions, hashPassword, login, SESSION_COOKIE, sessionCookie, userBySession, validatePassword, verifyPassword } from './auth.ts';
 import { BUILTIN_SCENARIO, type Config } from './config.ts';
 import { transaction, type Db } from './db.ts';
-import { HttpError, RateLimiter, Router, parseCookies, readBody, sendJson, sendText, type Ctx } from './http.ts';
-import { attemptReportMd, attemptsCsv, scenarioReportMd } from './reports.ts';
+import { registerAdminStudentRoutes, groupClause } from './adminStudents.ts';
+import { feedbackSummary, listFeedback } from './feedback.ts';
+import { registerStudentRoutes } from './studentRoutes.ts';
+import { textKey } from './students.ts';
+import { HttpError, RateLimiter, Router, parseCookies, readBody, sendBuffer, sendJson, sendText, type Ctx } from './http.ts';
+import { attemptReportMd, attemptsXlsx, scenarioReportMd } from './reports.ts';
+import { XLSX_MIME } from './xlsx.ts';
 import { computeStats } from './stats.ts';
 
 const MAX_PACK_BYTES = 5 * 1024 * 1024;
-const MAX_ATTEMPT_BYTES = 3 * 1024 * 1024;
 
 type ScenarioRow = {
   id: string;
@@ -24,7 +28,11 @@ type ScenarioRow = {
   updated_at: string;
 };
 
-export type Settings = { title?: string; publicBrief?: string; estimatedMinutes?: number; note?: string };
+export type Settings = { title?: string; publicBrief?: string; estimatedMinutes?: number; note?: string; customerName?: string; customerAvatar?: string };
+
+/** Аватарка заказчика: небольшая картинка data-URL (клиент сжимает её до ~256 px). */
+const AVATAR_RE = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
+const MAX_AVATAR_CHARS = 150_000;
 
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 const str = (value: unknown, max: number): string | undefined => (typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : undefined);
@@ -48,6 +56,12 @@ export function cleanSettings(raw: unknown): Settings {
   if (title) out.title = title;
   if (publicBrief) out.publicBrief = publicBrief;
   if (note) out.note = note;
+  const customerName = str(raw.customerName, 80);
+  if (customerName) out.customerName = customerName;
+  if (typeof raw.customerAvatar === 'string' && raw.customerAvatar) {
+    if (raw.customerAvatar.length > MAX_AVATAR_CHARS || !AVATAR_RE.test(raw.customerAvatar)) throw new HttpError(400, 'Аватарка: нужна картинка JPEG, PNG или WebP до 100 КБ.');
+    out.customerAvatar = raw.customerAvatar;
+  }
   if (raw.estimatedMinutes !== undefined && raw.estimatedMinutes !== null && raw.estimatedMinutes !== '') {
     const minutes = Number(raw.estimatedMinutes);
     if (!Number.isInteger(minutes) || minutes < 5 || minutes > 600) throw new HttpError(400, 'Время занятия — целое число минут от 5 до 600.');
@@ -76,34 +90,11 @@ export function checkPack(raw: unknown): { id: string; title: string; factsTotal
   return { id, title, factsTotal: facts.length };
 }
 
-function validateAttemptPayload(body: unknown, expectedScenario: string) {
-  if (!isObject(body)) throw new HttpError(400, 'Ожидается объект попытки.');
-  const attempt = body.attempt;
-  if (!isObject(attempt)) throw new HttpError(400, 'Нет поля attempt.');
-  if (attempt.scenarioId !== expectedScenario) throw new HttpError(400, 'Попытка относится к другому сценарию.');
-  const studentName = str(attempt.studentName, 120);
-  if (!studentName) throw new HttpError(400, 'Не указано имя студента.');
-  const startedAt = typeof attempt.startedAt === 'string' ? attempt.startedAt : '';
-  if (!startedAt || Number.isNaN(Date.parse(startedAt))) throw new HttpError(400, 'startedAt: нужна дата в формате ISO.');
-  if (typeof attempt.seed !== 'number') throw new HttpError(400, 'Нет seed.');
-  if (!Array.isArray(attempt.messages) || attempt.messages.length > 3000) throw new HttpError(400, 'messages: слишком много или не список.');
-  if (!Array.isArray(attempt.requirements) || attempt.requirements.length > 1000) throw new HttpError(400, 'requirements: слишком много или не список.');
-  if (!isObject(attempt.tz)) throw new HttpError(400, 'tz: ожидается объект.');
-  if (!isObject(attempt.engine) || !Array.isArray(attempt.engine.disclosed)) throw new HttpError(400, 'engine.disclosed: ожидается список.');
-  const finishedAt = typeof attempt.finishedAt === 'string' && !Number.isNaN(Date.parse(attempt.finishedAt)) ? attempt.finishedAt : null;
-  const result = isObject(attempt.result) ? attempt.result : null;
-  const score = result && typeof result.total === 'number' ? Math.round(result.total) : null;
-  const grade = result && typeof result.grade === 'string' ? result.grade.slice(0, 60) : null;
-  const studentMessages = (attempt.messages as unknown[]).filter((m) => isObject(m) && m.role === 'student').length;
-  return { attempt, studentName, startedAt, seed: attempt.seed, finishedAt, score, grade, studentMessages, disclosed: attempt.engine.disclosed.length };
-}
-
 export type App = { server: Server; handle: (req: IncomingMessage, res: ServerResponse) => Promise<void>; router: Router };
 
 export function createApp(db: Db, config: Config): App {
   const router = new Router();
   const loginLimiter = new RateLimiter(8, 10 * 60_000);
-  const submitLimiter = new RateLimiter(240, 60_000);
 
   const scenarioRow = (id: string) => db.prepare('SELECT * FROM scenarios WHERE id = ?').get(id) as ScenarioRow | undefined;
   const cookieSecure = (req: IncomingMessage) => config.secureCookies || req.headers['x-forwarded-proto'] === 'https';
@@ -124,32 +115,24 @@ export function createApp(db: Db, config: Config): App {
     };
   });
 
-  router.add('POST', '/api/public/attempts', 'public', async (ctx) => {
-    if (!submitLimiter.take(ctx.ip)) throw new HttpError(429, 'Слишком много запросов.');
-    const body = await ctx.json<unknown>(MAX_ATTEMPT_BYTES);
-    const scenarioId = isObject(body) && typeof body.scenarioId === 'string' ? body.scenarioId : '';
-    if (!scenarioId) throw new HttpError(400, 'Не указан scenarioId.');
-    if (!scenarioRow(scenarioId)) throw new HttpError(404, 'Сценарий не найден.');
-    const data = validateAttemptPayload(body, scenarioId);
-    const key = `${data.startedAt}|${data.seed}|${data.studentName.toLowerCase()}`;
-    const now = new Date().toISOString();
-    const json = JSON.stringify(data.attempt);
-    const existing = db.prepare('SELECT id, finished_at FROM attempts WHERE client_key = ?').get(key) as { id: number; finished_at: string | null } | undefined;
-    if (existing) {
-      // Завершённая попытка не откатывается к незавершённой: так запоздалая отправка не затирает результат.
-      if (existing.finished_at && !data.finishedAt) return { ok: true, id: existing.id, ignored: true };
-      db.prepare(
-        'UPDATE attempts SET updated_at = ?, finished_at = ?, score = ?, grade = ?, messages_count = ?, disclosed_count = ?, attempt_json = ? WHERE id = ?',
-      ).run(now, data.finishedAt, data.score, data.grade, data.studentMessages, data.disclosed, json, existing.id);
-      return { ok: true, id: existing.id };
-    }
-    const result = db
-      .prepare(
-        'INSERT INTO attempts (client_key, scenario_id, student_name, started_at, updated_at, finished_at, score, grade, messages_count, disclosed_count, attempt_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      )
-      .run(key, scenarioId, data.studentName, data.startedAt, now, data.finishedAt, data.score, data.grade, data.studentMessages, data.disclosed, json);
-    return { ok: true, id: Number(result.lastInsertRowid) };
+  /** Описание сценария для сайта студента: так же, как у текущего, но для сценария конкретной попытки. */
+  const scenarioPayload = (row: ScenarioRow) => ({
+    id: row.id,
+    kind: row.kind,
+    title: row.title,
+    settings: parseSettings(row.settings_json),
+    pack: row.kind === 'pack' && row.pack_json ? (JSON.parse(row.pack_json) as unknown) : null,
+    updatedAt: row.updated_at,
   });
+
+  registerStudentRoutes(router, {
+    db,
+    scenarioPayload: (id) => {
+      const row = scenarioRow(id);
+      return row ? scenarioPayload(row) : undefined;
+    },
+  });
+  registerAdminStudentRoutes(router, db);
 
   // ---------- Авторизация ----------
   router.add('POST', '/api/auth/login', 'public', async (ctx) => {
@@ -265,7 +248,7 @@ export function createApp(db: Db, config: Config): App {
   router.add('PATCH', '/api/admin/scenarios/:id', 'admin', async (ctx) => {
     const row = scenarioRow(ctx.params.id);
     if (!row) throw new HttpError(404, 'Сценарий не найден.');
-    const body = await ctx.json<{ settings?: unknown; isCurrent?: unknown }>(50_000);
+    const body = await ctx.json<{ settings?: unknown; isCurrent?: unknown }>(250_000);
     const now = new Date().toISOString();
     transaction(db, () => {
       if (body.settings !== undefined) {
@@ -304,22 +287,30 @@ export function createApp(db: Db, config: Config): App {
     const where: string[] = [];
     const params: (string | number)[] = [];
     if (q.get('scenario')) { where.push('a.scenario_id = ?'); params.push(q.get('scenario')!); }
-    if (q.get('q')) { where.push("a.student_name LIKE ? ESCAPE '\\'"); params.push(`%${q.get('q')!.replace(/[\\%_]/g, '\\$&')}%`); }
+    const group = groupClause(q.get('group'));
+    if (group.clause) { where.push(group.clause); params.push(...group.params); }
+    if (q.get('q')) {
+      // Поиск по ФИО и группе: ключи уже в нижнем регистре и без «ё» (SQLite не понижает регистр кириллицы).
+      where.push("(st.name_key LIKE ? ESCAPE '\\' OR st.group_key LIKE ? ESCAPE '\\')");
+      const like = `%${textKey(q.get('q')!).replace(/[\\%_]/g, '\\$&')}%`;
+      params.push(like, like);
+    }
     if (q.get('status') === 'finished') where.push('a.finished_at IS NOT NULL');
     if (q.get('status') === 'active') where.push('a.finished_at IS NULL');
     if (q.get('from')) { where.push('a.started_at >= ?'); params.push(q.get('from')!); }
     if (q.get('to')) { where.push('a.started_at <= ?'); params.push(`${q.get('to')!}${q.get('to')!.length === 10 ? 'T23:59:59.999Z' : ''}`); }
     const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    const sorts: Record<string, string> = { date: 'a.started_at DESC', score: 'a.score DESC, a.started_at DESC', name: 'a.student_name COLLATE NOCASE ASC' };
+    const sorts: Record<string, string> = { date: 'a.started_at DESC', score: 'a.score DESC, a.started_at DESC', name: 'st.name_key ASC, a.started_at DESC', group: "st.group_key = '', st.group_key ASC, st.name_key ASC" };
     const order = sorts[q.get('sort') ?? 'date'] ?? sorts.date;
     const pageSize = Math.min(100, Math.max(1, Number(q.get('pageSize') ?? 25) || 25));
     const page = Math.max(1, Number(q.get('page') ?? 1) || 1);
-    const total = (db.prepare(`SELECT COUNT(*) AS n FROM attempts a ${clause}`).get(...params) as { n: number }).n;
+    const from = 'FROM attempts a LEFT JOIN students st ON st.id = a.student_id LEFT JOIN scenarios s ON s.id = a.scenario_id';
+    const total = (db.prepare(`SELECT COUNT(*) AS n ${from} ${clause}`).get(...params) as { n: number }).n;
     const items = db
       .prepare(
-        `SELECT a.id, a.scenario_id AS scenarioId, s.title AS scenarioTitle, a.student_name AS studentName, a.started_at AS startedAt, a.updated_at AS updatedAt,
-                a.finished_at AS finishedAt, a.score, a.grade, a.messages_count AS messages, a.disclosed_count AS disclosed
-         FROM attempts a LEFT JOIN scenarios s ON s.id = a.scenario_id ${clause} ORDER BY ${order} LIMIT ? OFFSET ?`,
+        `SELECT a.id, a.scenario_id AS scenarioId, s.title AS scenarioTitle, a.student_name AS studentName, st.id AS studentId, COALESCE(st.group_name, '') AS "group",
+                a.started_at AS startedAt, a.updated_at AS updatedAt, a.finished_at AS finishedAt, a.score, a.grade, a.messages_count AS messages, a.disclosed_count AS disclosed
+         ${from} ${clause} ORDER BY ${order} LIMIT ? OFFSET ?`,
       )
       .all(...params, pageSize, (page - 1) * pageSize);
     return { items, total, page, pageSize };
@@ -327,10 +318,13 @@ export function createApp(db: Db, config: Config): App {
 
   router.add('GET', '/api/admin/attempts/:id', 'admin', (ctx) => {
     const row = db
-      .prepare('SELECT a.id, a.scenario_id AS scenarioId, s.title AS scenarioTitle, a.attempt_json AS json FROM attempts a LEFT JOIN scenarios s ON s.id = a.scenario_id WHERE a.id = ?')
-      .get(Number(ctx.params.id)) as { id: number; scenarioId: string; scenarioTitle: string | null; json: string } | undefined;
+      .prepare(
+        `SELECT a.id, a.scenario_id AS scenarioId, s.title AS scenarioTitle, a.attempt_json AS json, COALESCE(st.group_name, '') AS "group", st.id AS studentId
+         FROM attempts a LEFT JOIN scenarios s ON s.id = a.scenario_id LEFT JOIN students st ON st.id = a.student_id WHERE a.id = ?`,
+      )
+      .get(Number(ctx.params.id)) as { id: number; scenarioId: string; scenarioTitle: string | null; json: string; group: string; studentId: number | null } | undefined;
     if (!row) throw new HttpError(404, 'Попытка не найдена.');
-    return { id: row.id, scenarioId: row.scenarioId, scenarioTitle: row.scenarioTitle, attempt: JSON.parse(row.json) as unknown };
+    return { id: row.id, scenarioId: row.scenarioId, scenarioTitle: row.scenarioTitle, group: row.group, studentId: row.studentId, attempt: JSON.parse(row.json) as unknown };
   });
 
   router.add('GET', '/api/admin/attempts/:id/report.md', 'admin', (ctx) => {
@@ -348,11 +342,20 @@ export function createApp(db: Db, config: Config): App {
     return { ok: true };
   });
 
-  // ---------- Статистика и отчёты ----------
-  router.add('GET', '/api/admin/stats', 'admin', (ctx) => computeStats(db, ctx.url.searchParams.get('scenario') || undefined));
+  // ---------- Обратная связь ----------
+  router.add('GET', '/api/admin/feedback', 'admin', (ctx) => {
+    const q = ctx.url.searchParams;
+    const pageSize = Math.min(100, Math.max(1, Number(q.get('pageSize') ?? 20) || 20));
+    const page = Math.max(1, Number(q.get('page') ?? 1) || 1);
+    const filters = { scenario: q.get('scenario') || undefined, rating: q.get('rating') || undefined, q: q.get('q')?.trim() || undefined };
+    return { ...listFeedback(db, filters, page, pageSize), summary: feedbackSummary(db, filters.scenario) };
+  });
 
-  router.add('GET', '/api/admin/reports/attempts.csv', 'admin', (ctx) => {
-    sendText(ctx.res, 200, attemptsCsv(db, ctx.url.searchParams.get('scenario') || undefined), 'text/csv; charset=utf-8', { 'Content-Disposition': 'attachment; filename="attempts.csv"' });
+  // ---------- Статистика и отчёты ----------
+  router.add('GET', '/api/admin/stats', 'admin', (ctx) => computeStats(db, ctx.url.searchParams.get('scenario') || undefined, ctx.url.searchParams.get('group') || undefined));
+
+  router.add('GET', '/api/admin/reports/attempts.xlsx', 'admin', (ctx) => {
+    sendBuffer(ctx.res, 200, attemptsXlsx(db, ctx.url.searchParams.get('scenario') || undefined, ctx.url.searchParams.get('group') || undefined), XLSX_MIME, { 'Content-Disposition': 'attachment; filename="attempts.xlsx"' });
     return undefined;
   });
 
@@ -390,13 +393,13 @@ export function createApp(db: Db, config: Config): App {
       const url = new URL(req.url ?? '/', 'http://localhost');
       const method = req.method ?? 'GET';
       const ip = String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
-      const isPublicApi = url.pathname.startsWith('/api/public/');
+      const isPublicApi = url.pathname.startsWith('/api/public/') || url.pathname.startsWith('/api/student/');
 
       // CORS: только для публичного API студентов; админские запросы возможны лишь с того же адреса.
       if (isPublicApi) {
         res.setHeader('Access-Control-Allow-Origin', config.publicOrigin);
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
         res.setHeader('Access-Control-Max-Age', '600');
         if (method === 'OPTIONS') {
           res.writeHead(204);

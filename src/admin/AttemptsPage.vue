@@ -2,9 +2,10 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { adminApi } from '../api/client';
 import AttemptDetail from './AttemptDetail.vue';
+import DateField from './DateField.vue';
 import { dateTime, downloadFromServer, gradeColor, minutesBetween, type ScenarioSummary } from './format';
 
-type Row = { id: number; scenarioId: string; scenarioTitle: string | null; studentName: string; startedAt: string; updatedAt: string; finishedAt: string | null; score: number | null; grade: string | null; messages: number; disclosed: number };
+type Row = { id: number; scenarioId: string; scenarioTitle: string | null; studentName: string; startedAt: string; updatedAt: string; finishedAt: string | null; score: number | null; grade: string | null; messages: number; disclosed: number; resumeCode: string | null };
 
 const scenarios = ref<ScenarioSummary[]>([]);
 const rows = ref<Row[]>([]);
@@ -68,17 +69,16 @@ function onDeleted() {
 
 <template>
   <div class="space-y-4" data-testid="attempts">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-2xl font-semibold">Ответы студентов</h1>
-      <UButton color="neutral" variant="outline" icon="i-lucide-file-spreadsheet" label="Скачать таблицу (CSV)" @click="downloadFromServer(`/admin/reports/attempts.csv${filters.scenario === 'all' ? '' : `?scenario=${filters.scenario}`}`, 'attempts.csv')" />
-    </div>
+    <Teleport to="#admin-navbar-actions" defer>
+      <UButton color="neutral" variant="outline" icon="i-lucide-file-spreadsheet" aria-label="Скачать таблицу (XLSX)" @click="downloadFromServer(`/admin/reports/attempts.xlsx${filters.scenario === 'all' ? '' : `?scenario=${filters.scenario}`}`, 'attempts.xlsx')"><span class="hidden sm:inline">Скачать таблицу (XLSX)</span></UButton>
+    </Teleport>
 
-    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-      <UInput v-model="filters.q" icon="i-lucide-search" placeholder="Имя студента" class="lg:col-span-2" aria-label="Поиск по имени" data-testid="attempts-search" />
-      <USelect v-model="filters.scenario" :items="scenarioItems" aria-label="Сценарий" />
-      <USelect v-model="filters.status" :items="statusItems" aria-label="Статус" />
-      <UInput v-model="filters.from" type="date" aria-label="С даты" />
-      <UInput v-model="filters.to" type="date" aria-label="По дату" />
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-12">
+      <UInput v-model="filters.q" icon="i-lucide-search" placeholder="Имя студента или код попытки" class="lg:col-span-2 xl:col-span-3" aria-label="Поиск по имени" data-testid="attempts-search" />
+      <USelect v-model="filters.scenario" :items="scenarioItems" aria-label="Сценарий" class="xl:col-span-3" />
+      <USelect v-model="filters.status" :items="statusItems" aria-label="Статус" class="xl:col-span-2" />
+      <DateField v-model="filters.from" label="С даты" placeholder="С даты" class="xl:col-span-2" data-testid="filter-from" />
+      <DateField v-model="filters.to" label="По дату" placeholder="По дату" class="xl:col-span-2" data-testid="filter-to" />
     </div>
     <div class="flex items-center gap-2 text-sm text-muted">
       Сортировка:
@@ -99,7 +99,7 @@ function onDeleted() {
         <tbody :class="{ 'opacity-60': loading }">
           <tr v-if="!rows.length && !loading"><td colspan="8" class="p-6 text-center text-muted">Попыток не найдено.</td></tr>
           <tr v-for="row in rows" :key="row.id" class="cursor-pointer border-t border-default hover:bg-elevated/40" :data-testid="`attempt-${row.id}`" @click="openId = row.id">
-            <td class="p-2 font-medium">{{ row.studentName }}</td>
+            <td class="p-2 font-medium">{{ row.studentName }}<span v-if="row.resumeCode" class="block text-xs font-normal text-muted" :data-testid="`code-${row.id}`">{{ row.resumeCode }}</span></td>
             <td class="p-2 text-muted">{{ row.scenarioTitle ?? row.scenarioId }}</td>
             <td class="p-2 whitespace-nowrap">{{ dateTime(row.startedAt) }}</td>
             <td class="p-2 whitespace-nowrap">{{ minutesBetween(row.startedAt, row.finishedAt) }}</td>

@@ -2,9 +2,14 @@
 import { createEngineState, respond } from '../engine/dialogueEngine';
 import { evaluateAttempt } from '../engine/evaluationEngine';
 import { pickVariant } from '../engine/responseSelector';
+import { generateCode } from '../shared/resumeCode';
 import type { AnswerFeedback, Attempt, ChatMessage, Difficulty, Requirement, Scenario, Screen } from '../types';
 
 export const newSeed = (): number => Math.floor(Math.random() * 1_000_000) + 1;
+
+/** Новый личный код попытки: криптографически случайные русские слова. */
+export const newResumeCode = (): string =>
+  generateCode((max) => crypto.getRandomValues(new Uint32Array(1))[0]! % max);
 
 let counter = 0;
 export const makeId = (prefix: string): string => `${prefix}-${Date.now().toString(36)}-${(counter++).toString(36)}`;
@@ -28,6 +33,7 @@ export function createAttempt(scenario: Scenario, studentName: string, difficult
     screen: 'dialog',
     activeSection: 1,
     result: null,
+    resumeCode: newResumeCode(),
   };
 }
 

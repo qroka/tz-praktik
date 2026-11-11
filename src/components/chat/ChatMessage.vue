@@ -10,10 +10,11 @@ const props = defineProps<{
   highlighted: boolean;
   customerName: string;
   customerInitials: string;
+  customerAvatar?: string;
   /** Ответ можно оценить: ему предшествует вопрос студента. */
   canRate: boolean;
 }>();
-const emit = defineEmits<{ capture: [clarify: boolean]; clarify: []; repeat: []; rate: [rating: 'like' | 'dislike'] }>();
+const emit = defineEmits<{ capture: [clarify: boolean]; rate: [rating: 'like' | 'dislike'] }>();
 
 const feedback = computed(() => props.message.feedback);
 // Режим преподавателя (?teacher в адресе): под ответом видно, как понят вопрос. Студенту это не показывается.
@@ -42,8 +43,6 @@ const QUALITY_NOTE: Partial<Record<MessageQuality, string>> = {
   correction: 'Значение поправлено',
 };
 
-/** Заказчик не понял вопрос или просит уточнить: только тогда уместны «Уточнить» и «Повторить». */
-const needsFollowUp = computed(() => props.message.quality === 'unrecognized' || props.message.quality === 'clarify');
 const isCustomer = computed(() => props.message.role === 'customer');
 const note = computed(() => (!isCustomer.value && props.message.quality ? QUALITY_NOTE[props.message.quality] : undefined));
 // Ответ со сведениями можно сохранить как требование; честное «не знаю» — отметить как требующее уточнения.
@@ -72,7 +71,7 @@ const ui = computed(() => ({
       :parts="[{ type: 'text', text: message.text }]"
       :side="isCustomer ? 'left' : 'right'"
       variant="soft"
-      :avatar="isCustomer ? { text: customerInitials, alt: customerName } : undefined"
+      :avatar="isCustomer ? { src: customerAvatar, text: customerInitials, alt: customerName } : undefined"
       :ui="{ ...ui, root: 'max-w-full', container: `${ui.container} ${isCustomer ? 'max-w-[88%] lg:max-w-[80%]' : 'max-w-[88%] lg:max-w-[75%]'}` }"
     >
       <template #content>
@@ -88,7 +87,6 @@ const ui = computed(() => ({
       <template v-if="!readOnly && isCustomer">
         <UTooltip v-if="hasFacts" text="Записать сведения из этого ответа в реестр требований"><UButton size="sm" variant="soft" icon="i-lucide-bookmark-plus" label="Сохранить как требование" class="min-h-9" @click="emit('capture', false)" /></UTooltip>
         <UTooltip v-else-if="uncertain" text="Записать в реестр вопрос, который нужно уточнить: это не подтверждённое сведение"><UButton size="sm" variant="soft" color="warning" icon="i-lucide-circle-help" label="Отметить: требует уточнения" class="min-h-9" data-testid="mark-clarify" @click="emit('capture', true)" /></UTooltip>
-        <UTooltip v-if="needsFollowUp" text="Задать вопрос именно по этому ответу"><UButton size="sm" color="neutral" variant="ghost" icon="i-lucide-corner-down-right" label="Уточнить" aria-label="Уточнить" class="min-h-9" @click="emit('clarify')" /></UTooltip>
       </template>
       <template v-if="isCustomer && canRate">
         <template v-if="!readOnly">
@@ -97,7 +95,6 @@ const ui = computed(() => ({
         </template>
         <UTooltip v-else-if="feedback" :text="feedback.reason || 'Причина не указана'"><UBadge :color="feedback.rating === 'like' ? 'success' : 'error'" variant="subtle" size="sm" :icon="feedback.rating === 'like' ? 'i-lucide-thumbs-up' : 'i-lucide-thumbs-down'" :label="feedback.rating === 'like' ? 'Подходит' : 'Не подходит'" /></UTooltip>
       </template>
-      <UTooltip v-if="!readOnly && !isCustomer && needsFollowUp" text="Вставить этот вопрос в поле ввода ещё раз"><UButton size="sm" color="neutral" variant="ghost" icon="i-lucide-rotate-ccw" label="Повторить" aria-label="Задать снова" class="min-h-9" @click="emit('repeat')" /></UTooltip>
     </div>
 
     <p v-if="isCustomer && feedback?.reason && !readOnly" class="-mt-1 pb-3 ps-11 text-xs text-muted" data-testid="feedback-reason-text">Ваша оценка: {{ feedback.reason }}</p>

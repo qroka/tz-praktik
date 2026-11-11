@@ -62,7 +62,6 @@ async function removeUser(user: AdminUser) {
 
 <template>
   <div class="space-y-6" data-testid="account">
-    <h1 class="text-2xl font-semibold">Аккаунт</h1>
     <UAlert v-if="error" color="error" variant="subtle" icon="i-lucide-circle-alert" :description="error" role="alert" />
     <div class="grid gap-4 lg:grid-cols-2">
       <UCard :ui="{ body: 'space-y-4 p-5' }">

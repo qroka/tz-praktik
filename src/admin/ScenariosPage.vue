@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { adminApi } from '../api/client';
 import { buildScenarioFromPack, checkRecognition, type ScenarioPack } from '../data/scenarioPack';
 import { dateTime, downloadFromServer, downloadText, gradeColor, type ScenarioSummary } from './format';
 
+const router = useRouter();
 const items = ref<ScenarioSummary[]>([]);
 const error = ref('');
 const toast = useToast();
@@ -33,7 +35,28 @@ async function makeCurrent(item: ScenarioSummary) {
 
 // --- Настройки ---
 const editing = ref<ScenarioSummary | null>(null);
-const form = ref({ title: '', publicBrief: '', estimatedMinutes: '', note: '' });
+const form = ref({ title: '', publicBrief: '', estimatedMinutes: '', note: '', customerName: '', customerAvatar: '' });
+const avatarInput = ref<HTMLInputElement | null>(null);
+
+/** Квадратная обрезка по центру и сжатие до 256 px (WebP или JPEG): так аватарка занимает 20–40 КБ. */
+async function pickAvatar(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    const side = Math.min(bitmap.width, bitmap.height);
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 256;
+    canvas.getContext('2d')!.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, 256, 256);
+    // WebP легче JPEG при том же качестве; если браузер его не умеет кодировать, вернётся PNG — тогда берём JPEG.
+    const webp = canvas.toDataURL('image/webp', 0.85);
+    form.value.customerAvatar = webp.startsWith('data:image/webp') ? webp : canvas.toDataURL('image/jpeg', 0.85);
+  } catch {
+    fail(new Error('Не удалось прочитать картинку. Выберите файл JPEG, PNG или WebP.'));
+  }
+}
 const editOpen = computed({ get: () => editing.value !== null, set: (open) => !open && (editing.value = null) });
 
 function openSettings(item: ScenarioSummary) {
@@ -43,6 +66,8 @@ function openSettings(item: ScenarioSummary) {
     publicBrief: item.settings.publicBrief ?? '',
     estimatedMinutes: item.settings.estimatedMinutes ? String(item.settings.estimatedMinutes) : '',
     note: item.settings.note ?? '',
+    customerName: item.settings.customerName ?? '',
+    customerAvatar: item.settings.customerAvatar ?? '',
   };
 }
 
@@ -127,13 +152,12 @@ async function remove() {
 
 <template>
   <div class="space-y-4" data-testid="scenarios">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-2xl font-semibold">Сценарии</h1>
+    <Teleport to="#admin-navbar-actions" defer>
       <div>
         <input ref="fileInput" type="file" accept=".json,application/json" class="hidden" data-testid="scenario-file" @change="onFile" />
-        <UButton icon="i-lucide-upload" label="Загрузить файл сценария" @click="fileInput?.click()" />
+        <UButton icon="i-lucide-upload" aria-label="Загрузить файл сценария" @click="fileInput?.click()"><span class="hidden sm:inline">Загрузить файл сценария</span></UButton>
       </div>
-    </div>
+    </Teleport>
     <p class="max-w-3xl text-sm text-muted">
       Студентам показывается один сценарий — текущий. Новый сценарий готовит ChatGPT по промту из docs/prompt-novyj-scenarij.md; перед загрузкой файл проверяется в браузере.
     </p>
@@ -160,7 +184,8 @@ async function remove() {
           </div>
         </div>
         <div class="flex flex-wrap gap-2">
-          <UButton v-if="!item.isCurrent" size="sm" icon="i-lucide-badge-check" label="Сделать текущим" @click="makeCurrent(item)" />
+          <UButton size="sm" icon="i-lucide-eye" label="Открыть сценарий" :data-testid="`open-${item.id}`" @click="router.push(`/admin/scenarios/${item.id}`)" />
+          <UButton v-if="!item.isCurrent" size="sm" color="neutral" variant="outline" icon="i-lucide-badge-check" label="Сделать текущим" @click="makeCurrent(item)" />
           <UButton size="sm" color="neutral" variant="outline" icon="i-lucide-settings-2" label="Настройки" @click="openSettings(item)" />
           <UButton v-if="item.kind === 'pack'" size="sm" color="neutral" variant="outline" icon="i-lucide-download" label="Скачать файл" @click="downloadPack(item)" />
           <UButton size="sm" color="neutral" variant="outline" icon="i-lucide-file-text" label="Отчёт" @click="downloadFromServer(`/admin/reports/scenario/${item.id}`, `report-${item.id}.md`).catch(fail)" />
@@ -169,11 +194,22 @@ async function remove() {
       </UCard>
     </div>
 
-    <UModal v-model:open="editOpen" title="Настройки сценария" description="Заголовок, описание и время занятия видят студенты. Заметку видит только преподаватель.">
+    <UModal v-model:open="editOpen" title="Настройки сценария" description="Заголовок, описание, время занятия, имя и аватарку заказчика видят студенты. Заметку видит только преподаватель.">
       <template #body>
         <div class="space-y-4">
           <UFormField label="Название"><UInput v-model="form.title" class="w-full" placeholder="Оставьте пустым — название из сценария" /></UFormField>
           <UFormField label="Описание для студента"><UTextarea v-model="form.publicBrief" class="w-full" :rows="4" placeholder="Оставьте пустым — описание из сценария" /></UFormField>
+          <UFormField label="Заказчик в чате" hint="Имя и аватарку видят студенты">
+            <div class="flex flex-wrap items-center gap-3">
+              <UAvatar :src="form.customerAvatar || undefined" :text="(form.customerName || 'З').slice(0, 2).toUpperCase()" alt="Аватарка заказчика" size="xl" data-testid="avatar-preview" />
+              <div class="flex gap-2">
+                <UButton size="sm" color="neutral" variant="outline" icon="i-lucide-image-up" label="Выбрать картинку" @click="avatarInput?.click()" />
+                <UButton v-if="form.customerAvatar" size="sm" color="neutral" variant="ghost" icon="i-lucide-trash-2" label="Убрать" @click="form.customerAvatar = ''" />
+              </div>
+              <input ref="avatarInput" type="file" accept="image/jpeg,image/png,image/webp,.webp" class="sr-only" tabindex="-1" data-testid="avatar-file" @change="pickAvatar" />
+            </div>
+          </UFormField>
+          <UFormField label="Имя заказчика"><UInput v-model="form.customerName" class="w-full" placeholder="Оставьте пустым — имя из сценария" /></UFormField>
           <UFormField label="Время занятия, минут" hint="от 5 до 600"><UInput v-model="form.estimatedMinutes" type="number" min="5" max="600" class="w-40" /></UFormField>
           <UFormField label="Заметка преподавателя"><UTextarea v-model="form.note" class="w-full" :rows="2" /></UFormField>
         </div>

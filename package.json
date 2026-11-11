@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "@iconify-json/lucide": "^1.2.152",
+    "@internationalized/date": "^3.12.4",
     "@nuxt/ui": "^4.12.0",
     "@vueuse/core": "^15.0.0",
     "tailwindcss": "^4.3.5",

@@ -14,7 +14,7 @@ import ResultScreen from '../results/ResultScreen.vue';
 import AppSidebar from './AppSidebar.vue';
 import ConfirmDialog from './ConfirmDialog.vue';
 
-const { attempt, scenario, summary, reset, finish, applyImport, readProgressFile, notify, exportProgress } = useSession();
+const { attempt, scenario, summary, reset, finish, applyImport, readProgressFile, notify, exportProgress, conflict, useServerVersion, keepMine, signOut, resumeCode } = useSession();
 const { layout } = useLayout();
 
 const screen = computed<Screen>(() => {
@@ -35,9 +35,12 @@ const showToggle = computed(() => layout.value !== 'wide' && withProgress.value)
 const showBar = computed(() => layout.value === 'compact' || showToggle.value);
 const sidebarOpen = ref(false);
 const progressOpen = ref(false);
-const confirm = ref<'reset' | 'finish' | null>(null);
+const confirm = ref<'reset' | 'finish' | 'signout' | null>(null);
 const pendingImport = ref<Attempt | null>(null);
 const resetOpen = computed({ get: () => confirm.value === 'reset', set: (open) => !open && (confirm.value = null) });
+const signoutOpen = computed({ get: () => confirm.value === 'signout', set: (open) => !open && (confirm.value = null) });
+// Диалог конфликта нельзя закрыть мимо кнопок: Esc и клик по фону не должны молча выбрать версию.
+const conflictOpen = computed({ get: () => conflict.value !== null, set: () => undefined });
 const finishOpen = computed({ get: () => confirm.value === 'finish', set: (open) => !open && (confirm.value = null) });
 const importOpen = computed({ get: () => pendingImport.value !== null, set: (open) => !open && (pendingImport.value = null) });
 
@@ -54,6 +57,10 @@ function confirmReset() {
   confirm.value = null;
   reset();
 }
+async function confirmSignOut() {
+  confirm.value = null;
+  await signOut();
+}
 function confirmFinish() {
   confirm.value = null;
   finish();
@@ -66,7 +73,7 @@ function confirmImport() {
 
 <template>
   <UDashboardGroup unit="rem" storage="local" storage-key="tz-praktikum-layout" class="print-flow">
-    <AppSidebar v-model:open="sidebarOpen" @reset="confirm = 'reset'" @import="onImport" />
+    <AppSidebar v-model:open="sidebarOpen" @reset="confirm = 'reset'" @signout="confirm = 'signout'" @import="onImport" />
 
     <UDashboardPanel id="main" :ui="{ body: 'p-0 sm:p-0 gap-0 overflow-hidden' }" class="print-flow">
       <template v-if="showBar" #header>
@@ -124,6 +131,18 @@ function confirmImport() {
     </ConfirmDialog>
     <ConfirmDialog v-model:open="importOpen" title="Заменить текущую попытку?" confirm-label="Загрузить файл" @confirm="confirmImport">
       <p>Текущая работа будет заменена попыткой студента «{{ pendingImport?.studentName }}». Если она ещё нужна, сначала сохраните файл прогресса.</p>
+    </ConfirmDialog>
+    <ConfirmDialog v-model:open="signoutOpen" title="Выйти из попытки?" confirm-label="Выйти" @confirm="confirmSignOut">
+      <p>Ваша работа сохранена на сервере. Чтобы продолжить на этом или другом компьютере, откройте сайт и введите код попытки:</p>
+      <p class="rounded-lg bg-elevated px-3 py-2 text-base font-semibold" data-testid="signout-code">{{ resumeCode }}</p>
+      <p>Запишите его перед выходом: после выхода на этом компьютере попытки не останется.</p>
+    </ConfirmDialog>
+    <ConfirmDialog v-model:open="conflictOpen" locked title="Попытка изменена на другом устройстве" confirm-label="Загрузить версию с другого устройства" cancel-label="Оставить мою версию" @confirm="useServerVersion" @cancel="keepMine">
+      <p>Пока вы работали здесь, эту попытку сохранили с другого устройства. Выберите, какую версию оставить: вторая будет заменена.</p>
+      <p v-if="conflict && attempt" class="rounded-lg bg-elevated px-3 py-2 text-sm" data-testid="conflict-summary">
+        На другом устройстве: вопросов {{ conflict.attempt.messages.filter((m) => m.role === 'student').length }}, записей в реестре {{ conflict.attempt.requirements.length }}.
+        Здесь: вопросов {{ attempt.messages.filter((m) => m.role === 'student').length }}, записей в реестре {{ attempt.requirements.length }}.
+      </p>
     </ConfirmDialog>
     <ConfirmDialog v-model:open="finishOpen" title="Завершить попытку?" confirm-label="Завершить и получить оценку" cancel-label="Вернуться" @confirm="confirmFinish">
       <p>После завершения откроется эталон, а изменить ответы будет нельзя.</p>

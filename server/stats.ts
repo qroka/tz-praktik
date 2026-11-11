@@ -1,5 +1,6 @@
 // Статистика по попыткам. Всё считается из сохранённых JSON завершённых попыток, поэтому
 // серверу не нужен код сценария: перечень сведений приходит в result.etalon.
+import { groupClause } from './adminStudents.ts';
 import type { Db } from './db.ts';
 
 type AttemptRow = {
@@ -33,11 +34,18 @@ function median(values: number[]): number | null {
   return sorted.length % 2 ? sorted[mid] : round((sorted[mid - 1] + sorted[mid]) / 2);
 }
 
-export function computeStats(db: Db, scenarioId?: string) {
-  const where = scenarioId ? 'WHERE scenario_id = ?' : '';
-  const params = scenarioId ? [scenarioId] : [];
+export function computeStats(db: Db, scenarioId?: string, group?: string) {
+  const filters: string[] = [];
+  const params: string[] = [];
+  if (scenarioId) { filters.push('a.scenario_id = ?'); params.push(scenarioId); }
+  const byGroup = groupClause(group);
+  if (byGroup.clause) { filters.push(byGroup.clause); params.push(...byGroup.params); }
+  const where = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
   const rows = db
-    .prepare(`SELECT id, scenario_id, student_name, started_at, finished_at, score, grade, messages_count, attempt_json FROM attempts ${where}`)
+    .prepare(
+      `SELECT a.id, a.scenario_id, a.student_name, a.started_at, a.finished_at, a.score, a.grade, a.messages_count, a.attempt_json
+       FROM attempts a LEFT JOIN students st ON st.id = a.student_id ${where}`,
+    )
     .all(...params) as AttemptRow[];
   const finished = rows.filter((row) => row.finished_at && row.score !== null);
   const scores = finished.map((row) => row.score as number);

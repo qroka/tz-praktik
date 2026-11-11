@@ -7,7 +7,7 @@ export type ScenarioSummary = {
   kind: 'builtin' | 'pack';
   isCurrent: boolean;
   factsTotal: number | null;
-  settings: { title?: string; publicBrief?: string; estimatedMinutes?: number; note?: string };
+  settings: { title?: string; publicBrief?: string; estimatedMinutes?: number; note?: string; customerName?: string; customerAvatar?: string };
   attempts: number;
   finished: number;
   avgScore: number | null;

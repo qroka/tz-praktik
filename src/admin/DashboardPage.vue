@@ -60,10 +60,9 @@ const visibleFacts = computed(() => (showAllFacts.value ? stats.value?.facts : s
 
 <template>
   <div class="space-y-6" data-testid="dashboard">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-2xl font-semibold">Обзор</h1>
-      <USelect v-model="scenario" :items="scenarioItems" class="w-72" aria-label="Сценарий" />
-    </div>
+    <Teleport to="#admin-navbar-actions" defer>
+      <USelect v-model="scenario" :items="scenarioItems" class="w-36 sm:w-56" aria-label="Сценарий" />
+    </Teleport>
 
     <UAlert v-if="error" color="error" variant="subtle" icon="i-lucide-circle-alert" :description="error" />
 

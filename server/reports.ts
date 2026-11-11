@@ -1,19 +1,9 @@
-// Отчёты: CSV для Excel и Markdown по сценарию и по одной попытке.
+// Отчёты: таблица Excel (.xlsx) и Markdown по сценарию и по одной попытке.
 import { TZ_SECTION_TITLES } from './config.ts';
 import type { Db } from './db.ts';
 import { computeStats } from './stats.ts';
-
-/** Ячейка CSV: кавычки и защита от формул («=», «+», «-», «@» в начале). */
-export function csvCell(value: unknown): string {
-  let text = value === null || value === undefined ? '' : String(value);
-  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
-  return /[";\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-}
-
-export function toCsv(header: string[], rows: unknown[][]): string {
-  // BOM и «;» — Excel в русской локали открывает файл без мастера импорта.
-  return '﻿' + [header, ...rows].map((row) => row.map(csvCell).join(';')).join('\r\n') + '\r\n';
-}
+import { groupClause } from './adminStudents.ts';
+import { buildXlsx } from './xlsx.ts';
 
 type AttemptRow = {
   id: number;
@@ -26,31 +16,42 @@ type AttemptRow = {
   grade: string | null;
   messages_count: number;
   disclosed_count: number;
+  group_name: string;
 };
 
-export function attemptsCsv(db: Db, scenarioId?: string): string {
+/** Таблица попыток для Excel. Время — московское (у Excel нет часовых поясов). */
+export function attemptsXlsx(db: Db, scenarioId?: string, group?: string): Buffer {
+  const filters: string[] = [];
+  const params: string[] = [];
+  if (scenarioId) { filters.push('a.scenario_id = ?'); params.push(scenarioId); }
+  const byGroup = groupClause(group);
+  if (byGroup.clause) { filters.push(byGroup.clause); params.push(...byGroup.params); }
   const rows = db
     .prepare(
-      `SELECT a.id, a.scenario_id, s.title AS scenario_title, a.student_name, a.started_at, a.finished_at, a.score, a.grade, a.messages_count, a.disclosed_count
-       FROM attempts a LEFT JOIN scenarios s ON s.id = a.scenario_id
-       ${scenarioId ? 'WHERE a.scenario_id = ?' : ''} ORDER BY a.started_at DESC`,
+      `SELECT a.id, a.scenario_id, s.title AS scenario_title, a.student_name, COALESCE(st.group_name, '') AS group_name, a.started_at, a.finished_at, a.score, a.grade, a.messages_count, a.disclosed_count
+       FROM attempts a LEFT JOIN scenarios s ON s.id = a.scenario_id LEFT JOIN students st ON st.id = a.student_id
+       ${filters.length ? `WHERE ${filters.join(' AND ')}` : ''} ORDER BY st.group_key = '', st.group_key, a.student_name, a.started_at DESC`,
     )
-    .all(...(scenarioId ? [scenarioId] : [])) as AttemptRow[];
-  return toCsv(
-    ['№', 'Сценарий', 'Студент', 'Начало', 'Завершение', 'Минут', 'Балл', 'Оценка', 'Вопросов', 'Раскрыто сведений'],
-    rows.map((row) => [
-      row.id,
-      row.scenario_title ?? row.scenario_id,
-      row.student_name,
-      row.started_at,
-      row.finished_at ?? '',
-      row.finished_at ? Math.round((Date.parse(row.finished_at) - Date.parse(row.started_at)) / 60_000) : '',
-      row.score ?? '',
-      row.grade ?? 'в процессе',
-      row.messages_count,
-      row.disclosed_count,
-    ]),
-  );
+    .all(...params) as AttemptRow[];
+  return buildXlsx([
+    {
+      name: 'Попытки',
+      header: ['№', 'Студент', 'Группа', 'Сценарий', 'Начало (МСК)', 'Завершение (МСК)', 'Минут', 'Балл', 'Оценка', 'Вопросов', 'Раскрыто сведений'],
+      rows: rows.map((row) => [
+        row.id,
+        row.student_name,
+        row.group_name,
+        row.scenario_title ?? row.scenario_id,
+        new Date(row.started_at),
+        row.finished_at ? new Date(row.finished_at) : null,
+        row.finished_at ? Math.round((Date.parse(row.finished_at) - Date.parse(row.started_at)) / 60_000) : null,
+        row.score,
+        row.grade ?? 'в процессе',
+        row.messages_count,
+        row.disclosed_count,
+      ]),
+    },
+  ]);
 }
 
 const date = (iso: string | null) => (iso ? new Date(iso).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' }) : '—');

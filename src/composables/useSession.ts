@@ -1,9 +1,11 @@
 // Состояние текущей попытки: единственный источник правды интерфейса.
 // Бизнес-логика остаётся в чистых модулях src/engine и src/state.
 import { computed, ref, shallowRef, watch } from 'vue';
-import { needsSync, sendAttempt } from '../api/sync';
-import { scenario, serverConnected } from '../data/activeScenario';
-import { createAttempt, finishAttempt, newSeed, sendQuestion, setScreen } from '../state/attempt';
+import { ApiError } from '../api/client';
+import { fetchByCode, getRev, needsSync, sendAttempt, setRev, type SyncResult } from '../api/sync';
+import { applyRemoteScenario, scenario, serverConnected } from '../data/activeScenario';
+import { normalizeCode } from '../shared/resumeCode';
+import { createAttempt, finishAttempt, newResumeCode, newSeed, sendQuestion, setScreen, validateAttempt } from '../state/attempt';
 import { downloadFile, parseProgress, progressFileName, toProgressJson } from '../state/exporters';
 import { buildHint, summarizeProgress } from '../state/learningProgress';
 import { clearAttempt, loadAttempt, saveAttempt } from '../state/storage';
@@ -25,6 +27,9 @@ let noticeCounter = 0;
 let typingTimer = 0;
 let saveTimer = 0;
 let syncTimer = 0;
+
+/** Другое устройство сохранило более новую версию этой попытки: студент выбирает, какую оставить. */
+const conflict = shallowRef<{ attempt: Attempt; rev: number } | null>(null);
 
 function notify(kind: Notice['kind'], title: string, description?: string) {
   notice.value = { id: ++noticeCounter, kind, title, description };
@@ -56,18 +61,37 @@ watch(
   { flush: 'post' },
 );
 
-// Передача попытки преподавателю: с задержкой после изменений, а итог — сразу при завершении.
+/** Сохраняет попытку на сервере. При конфликте версий ничего не затирает, а просит студента выбрать. */
+async function push(current: Attempt, force = false): Promise<SyncResult> {
+  const result = await sendAttempt(current, { force });
+  if (result.status !== 'conflict') return result;
+  const check = validateAttempt(result.attempt, scenario);
+  if (!check.ok) return { status: 'rejected', message: check.error };
+  // Сервер уже хранит ровно то же самое (например, ответ на прошлую отправку потерялся): молча принимаем номер версии.
+  if (JSON.stringify(check.attempt) === JSON.stringify(current)) {
+    if (current.resumeCode) setRev(current.resumeCode, result.rev);
+    return { status: 'ok', rev: result.rev };
+  }
+  conflict.value = { attempt: check.attempt, rev: result.rev };
+  return result;
+}
+
+// Хранение попытки на сервере: с задержкой после изменений, а итог — сразу при завершении.
 watch(
   attempt,
   (current) => {
     window.clearTimeout(syncTimer);
-    if (!current || !serverConnected || current.finishedAt || !current.messages.some((m) => m.role === 'student')) return;
-    syncTimer = window.setTimeout(() => void sendAttempt(current), 6000);
+    if (!current || !serverConnected || conflict.value || current.finishedAt || !current.messages.some((m) => m.role === 'student')) return;
+    syncTimer = window.setTimeout(() => void push(current), 6000);
   },
   { flush: 'post' },
 );
 
-if (attempt.value && needsSync(attempt.value)) void sendAttempt(attempt.value);
+// Попытка начата до появления личных кодов: выдаём код, чтобы к ней можно было вернуться.
+if (attempt.value && serverConnected && !attempt.value.resumeCode) attempt.value = { ...attempt.value, resumeCode: newResumeCode() };
+if (attempt.value && serverConnected && (needsSync(attempt.value) || (attempt.value.resumeCode && getRev(attempt.value.resumeCode) === 0 && attempt.value.messages.some((m) => m.role === 'student')))) {
+  void push(attempt.value);
+}
 
 function update(change: (current: Attempt) => Attempt) {
   if (attempt.value) attempt.value = change(attempt.value);
@@ -95,6 +119,10 @@ export function useSession() {
     attempt.value = createAttempt(scenario, name, 'learning', newSeed());
     hiddenId.value = null;
     notice.value = null;
+    conflict.value = null;
+    if (serverConnected && attempt.value.resumeCode) {
+      notify('info', 'Запомните код попытки', `${attempt.value.resumeCode}. По нему можно продолжить на другом компьютере. Он всегда виден в левом меню.`);
+    }
   }
 
   function send(text: string, replyToId: string | null) {
@@ -131,9 +159,9 @@ export function useSession() {
     update((a) => finishAttempt(a, scenario));
     const done = attempt.value;
     if (done && serverConnected) {
-      void sendAttempt(done).then((ok) => {
-        if (ok) notify('success', 'Результат отправлен преподавателю');
-        else notify('info', 'Результат пока не отправлен', 'Он сохранён в браузере и уйдёт при следующем открытии сайта. Можно скачать файл прогресса.');
+      void push(done).then((result) => {
+        if (result.status === 'ok') notify('success', 'Результат отправлен преподавателю');
+        else if (result.status !== 'conflict') notify('info', 'Результат пока не отправлен', 'Он сохранён в браузере и уйдёт при следующем открытии сайта. Можно скачать файл прогресса.');
       });
     }
   }
@@ -145,8 +173,90 @@ export function useSession() {
     clearAttempt();
     attempt.value = null;
     hiddenId.value = null;
+    conflict.value = null;
     save.value = { state: 'idle' };
   }
+
+  /**
+   * Выход без потери работы (общий компьютер): попытка остаётся на сервере и открывается по коду.
+   * Сначала дожидаемся, что последняя версия ушла на сервер.
+   */
+  async function signOut(): Promise<boolean> {
+    const current = attempt.value;
+    if (!current) return true;
+    if (serverConnected) {
+      window.clearTimeout(syncTimer);
+      const result = await push(current);
+      if (result.status !== 'ok') {
+        if (result.status !== 'conflict') notify('error', 'Не удалось сохранить на сервере', 'Выход отменён, чтобы не потерять работу. Проверьте соединение и повторите.');
+        return false;
+      }
+    }
+    reset();
+    return true;
+  }
+
+  /** Возвращает попытку по личному коду: с сервера, вместе с её сценарием. */
+  async function resume(input: string): Promise<{ ok: true } | { ok: false; error: string }> {
+    const code = normalizeCode(input);
+    if (!code) return { ok: false, error: 'Введите четыре слова кода: через пробел или дефис, например «лиса мост река замок».' };
+    try {
+      const data = await fetchByCode(code);
+      if (data.scenario.id !== scenario.id) applyRemoteScenario(data.scenario);
+      const check = validateAttempt(data.attempt, scenario);
+      if (!check.ok) return { ok: false, error: check.error };
+      window.clearTimeout(typingTimer);
+      window.clearTimeout(syncTimer);
+      setRev(code, data.rev);
+      conflict.value = null;
+      attempt.value = { ...check.attempt, resumeCode: code };
+      hiddenId.value = null;
+      notify('success', `Попытка «${check.attempt.studentName}» открыта`);
+      return { ok: true };
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 0) return { ok: false, error: 'Сервер недоступен. Проверьте интернет и повторите.' };
+      return { ok: false, error: error instanceof Error ? error.message : 'Не удалось открыть попытку.' };
+    }
+  }
+
+  /** Конфликт версий: берём то, что сохранило другое устройство. */
+  function useServerVersion() {
+    const found = conflict.value;
+    if (!found) return;
+    window.clearTimeout(typingTimer);
+    window.clearTimeout(syncTimer);
+    if (found.attempt.resumeCode) setRev(found.attempt.resumeCode, found.rev);
+    conflict.value = null;
+    attempt.value = found.attempt;
+    hiddenId.value = null;
+    notify('success', 'Загружена версия с другого устройства');
+  }
+
+  /** Конфликт версий: оставляем свою, версия с сервера будет заменена. */
+  function keepMine() {
+    const found = conflict.value;
+    const mine = attempt.value;
+    conflict.value = null;
+    if (!found || !mine) return;
+    if (found.attempt.resumeCode) setRev(found.attempt.resumeCode, found.rev);
+    void push(mine, true).then((result) => {
+      if (result.status === 'ok') notify('success', 'Сохранена ваша версия');
+    });
+  }
+
+  const resumeCode = computed(() => (serverConnected ? attempt.value?.resumeCode ?? null : null));
+  const resumeLink = computed(() => (resumeCode.value ? `${window.location.origin}${window.location.pathname}#/continue/${encodeURIComponent(resumeCode.value)}` : null));
+
+  async function copyText(text: string, done: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      notify('success', done);
+    } catch {
+      notify('error', 'Не удалось скопировать', text);
+    }
+  }
+  const copyCode = () => (resumeCode.value ? copyText(resumeCode.value, 'Код скопирован') : undefined);
+  const copyLink = () => (resumeLink.value ? copyText(resumeLink.value, 'Ссылка скопирована') : undefined);
 
   function applyImport(imported: Attempt) {
     window.clearTimeout(typingTimer);
@@ -191,6 +301,16 @@ export function useSession() {
     showSource,
     finish,
     reset,
+    signOut,
+    resume,
+    conflict,
+    useServerVersion,
+    keepMine,
+    resumeCode,
+    resumeLink,
+    copyCode,
+    copyLink,
+    serverEnabled: computed(() => serverConnected),
     applyImport,
     readProgressFile,
     exportProgress,

@@ -71,6 +71,11 @@ export function sendText(res: ServerResponse, status: number, body: string, type
   res.end(body);
 }
 
+export function sendBuffer(res: ServerResponse, status: number, body: Buffer, type: string, headers: Record<string, string> = {}) {
+  res.writeHead(status, { 'Content-Type': type, 'Content-Length': body.length, 'Cache-Control': 'no-store', ...headers });
+  res.end(body);
+}
+
 export function readBody(req: IncomingMessage, limit: number): Promise<string> {
   return new Promise((resolve, reject) => {
     const length = Number(req.headers['content-length'] ?? 0);

@@ -15,7 +15,6 @@ const props = defineProps<{ layout: Layout }>();
 const { attempt, scenario, readOnly, hiddenId, highlightId, visibleMessages, summary, update, send, notify } = useSession();
 
 const text = ref('');
-const replyToId = ref<string | null>(null);
 const captureId = ref<string | null>(null);
 const captureClarify = ref(false);
 const rateId = ref<string | null>(null);
@@ -26,7 +25,6 @@ const thread = useTemplateRef<HTMLElement>('thread');
 const composer = useTemplateRef<{ focus: () => void }>('composer');
 const typing = computed(() => hiddenId.value !== null);
 
-const replyTarget = computed(() => (replyToId.value ? attempt.value?.messages.find((message) => message.id === replyToId.value) : undefined));
 const captureMessage = computed(() => (captureId.value ? attempt.value?.messages.find((message) => message.id === captureId.value) : undefined));
 const captureOpen = computed({ get: () => captureId.value !== null, set: (open) => !open && (captureId.value = null) });
 
@@ -106,19 +104,8 @@ watch(thread, async (element) => {
 });
 
 function submit() {
-  send(text.value.trim(), replyToId.value);
+  send(text.value.trim(), null);
   text.value = '';
-  replyToId.value = null;
-  composer.value?.focus();
-}
-
-function startClarify(id: string) {
-  replyToId.value = id;
-  composer.value?.focus();
-}
-
-function repeat(question: string) {
-  text.value = question;
   composer.value?.focus();
 }
 
@@ -178,11 +165,10 @@ function saveRequirement(draft: RequirementDraft) {
           :highlighted="highlightId === message.id"
           :customer-name="scenario.customer.name"
           :customer-initials="scenario.customer.initials"
+          :customer-avatar="scenario.customer.avatar"
           :can-rate="Boolean(questionBefore(message.id))"
           @rate="(rating) => startRate(message.id, rating)"
           @capture="(clarify: boolean) => startCapture(message.id, clarify)"
-          @clarify="startClarify(message.id)"
-          @repeat="repeat(message.text)"
         />
       </TransitionGroup>
       <div v-if="typing" class="mx-auto flex max-w-4xl items-center gap-2 ps-11 pb-3 text-sm text-muted" data-testid="typing">
@@ -192,7 +178,7 @@ function saveRequirement(draft: RequirementDraft) {
     </div>
 
     <div v-if="readOnly" class="shrink-0 border-t border-default px-5 py-4 text-sm text-muted">Попытка завершена. Переписка доступна для чтения.</div>
-    <ChatComposer v-else ref="composer" v-model="text" :busy="typing" :reply-text="replyTarget?.text ?? null" :compact-layout="props.layout === 'compact'" @send="submit" @cancel-reply="replyToId = null" />
+    <ChatComposer v-else ref="composer" v-model="text" :busy="typing" @send="submit" />
 
     <RequirementForm
       v-model:open="captureOpen"

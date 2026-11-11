@@ -33,15 +33,14 @@ async function download(kind: string, path: string, filename: string) {
 
 <template>
   <div class="space-y-4" data-testid="reports">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-2xl font-semibold">Отчёты</h1>
-      <USelect v-model="scenario" :items="items" class="w-72" aria-label="Сценарий" />
-    </div>
+    <Teleport to="#admin-navbar-actions" defer>
+      <USelect v-model="scenario" :items="items" class="w-36 sm:w-56" aria-label="Сценарий" />
+    </Teleport>
     <div class="grid gap-4 md:grid-cols-2">
       <UCard :ui="{ body: 'space-y-3 p-5' }">
-        <div class="flex items-center gap-2"><UIcon name="i-lucide-file-spreadsheet" class="size-5 text-primary" /><h2 class="font-semibold">Таблица попыток (CSV)</h2></div>
+        <div class="flex items-center gap-2"><UIcon name="i-lucide-file-spreadsheet" class="size-5 text-primary" /><h2 class="font-semibold">Таблица попыток (XLSX)</h2></div>
         <p class="text-sm text-muted">Все попытки выбранного сценария: студент, время, балл, оценка, число вопросов. Открывается в Excel.</p>
-        <UButton :loading="busy === 'csv'" icon="i-lucide-download" label="Скачать CSV" data-testid="report-csv" @click="download('csv', `/admin/reports/attempts.csv${scenario === 'all' ? '' : `?scenario=${scenario}`}`, 'attempts.csv')" />
+        <UButton :loading="busy === 'xlsx'" icon="i-lucide-download" label="Скачать XLSX" data-testid="report-xlsx" @click="download('xlsx', `/admin/reports/attempts.xlsx${scenario === 'all' ? '' : `?scenario=${scenario}`}`, 'attempts.xlsx')" />
       </UCard>
       <UCard :ui="{ body: 'space-y-3 p-5' }">
         <div class="flex items-center gap-2"><UIcon name="i-lucide-file-text" class="size-5 text-primary" /><h2 class="font-semibold">Отчёт по сценарию (Markdown)</h2></div>

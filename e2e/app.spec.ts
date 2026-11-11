@@ -80,20 +80,12 @@ test('2–4. Вопрос, ответ, прогресс, уточнение, п�
   await expect(page.getByTestId('explored-count')).toContainText('из 13');
 
   expect(await ask(page, 'Какое отклонение допустимо?')).toMatch(/2|двух/);
-  // Короткие ответы без вопроса: кнопок «Уточнить» и «Повторить» нет.
-  await expect(page.getByTestId('message-customer').nth(1).getByRole('button', { name: 'Уточнить' })).toHaveCount(0);
-  await expect(page.getByTestId('message-student').first().getByRole('button', { name: 'Задать снова' })).toHaveCount(0);
-
-  // Заказчик переспрашивает: появляются «Уточнить», «Повторить» и центральная метка.
+  // Кнопок «Уточнить» и «Повторить» нет; заказчик переспрашивает — появляется центральная метка.
   expect(await ask(page, 'Какое давление?')).not.toMatch(/\d/);
   await expect(page.getByTestId('message-note')).toContainText('Заказчик уточняет');
-  await page.getByTestId('message-customer').last().getByRole('button', { name: 'Уточнить' }).click();
-  await expect(page.getByTestId('reply-target')).toContainText('Уточнение');
+  await expect(page.getByRole('button', { name: 'Уточнить', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Задать снова' })).toHaveCount(0);
   expect((await ask(page, 'После насоса')).length).toBeGreaterThan(0);
-  await expect(page.getByTestId('reply-target')).toHaveCount(0);
-
-  await page.getByTestId('message-student').filter({ hasText: 'Какое давление?' }).getByRole('button', { name: 'Задать снова' }).click();
-  await expect(input).toHaveValue('Какое давление?');
 });
 
 test('«Расскажите всё» не выдаёт значений', async ({ page }) => {
@@ -243,18 +235,11 @@ test('9. Экспорт и импорт файла прогресса', async ({
   await page.getByRole('button', { name: 'Завершить и получить оценку' }).click();
   await expect(page.getByTestId('score')).toBeVisible();
 
-  const download = async (testId: string) => {
-    const [file] = await Promise.all([page.waitForEvent('download'), page.getByTestId(testId).click()]);
-    return { name: file.suggestedFilename(), text: readFileSync((await file.path())!, 'utf8') };
-  };
-  const md = await download('export-md');
-  expect(md.name).toBe('result.md');
-  expect(md.text).toContain('Текст для экспорта');
-  const txt = await download('export-txt');
-  expect(txt.text).not.toContain('**');
-  const json = await download('export-json');
-  expect(JSON.parse(json.text).student).toBe('Экспорт');
-  const progress = await download('export-progress');
+  // На экране результата выгрузок для студента нет, файл прогресса сохраняется из меню попытки.
+  for (const id of ['export-md', 'export-txt', 'export-json', 'export-progress']) await expect(page.getByTestId(id)).toHaveCount(0);
+  await page.getByRole('button', { name: 'Меню попытки' }).click();
+  const [file] = await Promise.all([page.waitForEvent('download'), page.getByRole('menuitem', { name: 'Сохранить файл прогресса' }).click()]);
+  const progress = { name: file.suggestedFilename(), text: readFileSync((await file.path())!, 'utf8') };
   expect(progress.name).toMatch(/^progress-Экспорт-\d+\.json$/);
 
   await page.getByRole('button', { name: 'Меню попытки' }).click();

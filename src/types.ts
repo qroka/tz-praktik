@@ -153,7 +153,7 @@ export type Scenario = {
   title: string;
   subtitle: string;
   publicBrief: string;
-  customer: { name: string; role: string; initials: string };
+  customer: { name: string; role: string; initials: string; avatar?: string };
   estimatedMinutes: number;
   greeting: string[];
   categories: Category[];
@@ -409,4 +409,6 @@ export type Attempt = {
   screen: Screen;
   activeSection: number;
   result: EvaluationResult | null;
+  /** Личный код попытки из русских слов: по нему студент возвращается к работе на любом устройстве (при подключённом сервере). */
+  resumeCode?: string;
 };

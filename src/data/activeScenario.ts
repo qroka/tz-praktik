@@ -3,11 +3,16 @@
 // 2. Без сервера: файл scenario/scenariy.json, если он собирается без ошибок.
 // 3. Иначе — встроенный кейс «Узел горячей воды».
 import { request } from '../api/client';
+import { STORAGE_KEY } from '../state/storage';
 import type { Scenario } from '../types';
 import { scenario as builtIn } from './scenario';
 import { buildScenarioFromPack, type ScenarioPack } from './scenarioPack';
 
-export type ScenarioSettings = { title?: string; publicBrief?: string; estimatedMinutes?: number };
+export type ScenarioSettings = { title?: string; publicBrief?: string; estimatedMinutes?: number; customerName?: string; customerAvatar?: string };
+
+/** Инициалы для аватарки без картинки: первые буквы первых двух слов имени. */
+const initialsOf = (name: string): string =>
+  name.split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word[0]!.toUpperCase()).join('');
 
 const packs = import.meta.glob('../../scenario/scenariy.json', { eager: true, import: 'default' }) as Record<string, ScenarioPack>;
 
@@ -28,6 +33,12 @@ function withSettings(base: Scenario, settings: ScenarioSettings): Scenario {
     title: settings.title ?? base.title,
     publicBrief: settings.publicBrief ?? base.publicBrief,
     estimatedMinutes: settings.estimatedMinutes ?? base.estimatedMinutes,
+    customer: {
+      ...base.customer,
+      name: settings.customerName ?? base.customer.name,
+      initials: settings.customerName ? initialsOf(settings.customerName) || base.customer.initials : base.customer.initials,
+      avatar: settings.customerAvatar,
+    },
   };
 }
 
@@ -37,19 +48,39 @@ export let scenario: Scenario = fromFile();
 /** Подключён ли сервер: только тогда попытки отправляются преподавателю. */
 export let serverConnected = false;
 
-type PublicScenario = { id: string; kind: 'builtin' | 'pack'; settings: ScenarioSettings; pack: ScenarioPack | null };
+export type PublicScenario = { id: string; kind: 'builtin' | 'pack'; settings: ScenarioSettings; pack: ScenarioPack | null };
+
+/** Делает сценарий с сервера активным. Бросает ошибку, если файл сценария не собирается. */
+export function applyRemoteScenario(remote: PublicScenario): void {
+  if (remote.kind === 'builtin') {
+    scenario = withSettings(builtIn, remote.settings);
+  } else if (remote.pack) {
+    const { scenario: built, report } = buildScenarioFromPack(remote.pack);
+    if (report.errors.length) throw new Error(report.errors.join('; '));
+    scenario = withSettings(built, remote.settings);
+  }
+}
+
+/**
+ * Локальная попытка шла по другому сценарию (преподаватель с тех пор выбрал новый): подключаем её собственный сценарий,
+ * иначе работа студента «пропала бы» с экрана. Сценарий берётся с сервера по личному коду попытки.
+ */
+async function restoreScenarioOfLocalAttempt(): Promise<void> {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? 'null') as { scenarioId?: string; resumeCode?: string } | null;
+    if (!saved?.resumeCode || !saved.scenarioId || saved.scenarioId === scenario.id) return;
+    const found = await request<{ scenario: PublicScenario }>(`/public/attempts/${encodeURIComponent(saved.resumeCode)}`, { timeout: 5000 });
+    if (found.scenario.id === saved.scenarioId) applyRemoteScenario(found.scenario);
+  } catch {
+    // Сервер не знает эту попытку или недоступен: остаётся текущий сценарий.
+  }
+}
 
 export async function initScenario(): Promise<void> {
   try {
-    const remote = await request<PublicScenario>('/public/scenario', { timeout: 3000 });
-    if (remote.kind === 'builtin') {
-      scenario = withSettings(builtIn, remote.settings);
-    } else if (remote.pack) {
-      const { scenario: built, report } = buildScenarioFromPack(remote.pack);
-      if (report.errors.length) throw new Error(report.errors.join('; '));
-      scenario = withSettings(built, remote.settings);
-    }
+    applyRemoteScenario(await request<PublicScenario>('/public/scenario', { timeout: 3000 }));
     serverConnected = true;
+    await restoreScenarioOfLocalAttempt();
   } catch (error) {
     // Нет сервера или сценарий с сервера не собрался: остаётся локальный вариант.
     if (error instanceof Error && !/Сервер недоступен/.test(error.message)) console.error('Сценарий с сервера не подключён:', error.message);

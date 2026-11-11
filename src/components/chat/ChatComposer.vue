@@ -4,9 +4,9 @@ import { computed, ref, useTemplateRef } from 'vue';
 const MAX_MESSAGE = 600;
 
 // Поле вопроса на UChatPrompt: Enter отправляет, Shift+Enter переносит строку, IME учитывается самим компонентом.
-const props = defineProps<{ busy: boolean; replyText: string | null; compactLayout: boolean }>();
+const props = defineProps<{ busy: boolean }>();
 const text = defineModel<string>({ required: true });
-const emit = defineEmits<{ send: []; cancelReply: [] }>();
+const emit = defineEmits<{ send: [] }>();
 
 const error = ref<string | null>(null);
 const prompt = useTemplateRef<{ textareaRef?: { focus: () => void } }>('prompt');
@@ -34,31 +34,25 @@ defineExpose({ focus });
 
 <template>
   <div class="composer-safe shrink-0 border-t border-default px-3 pt-3 sm:px-5">
-    <div v-if="replyText" class="mb-2 flex items-center gap-2 rounded-lg bg-elevated px-3 py-2 text-sm" data-testid="reply-target">
-      <UIcon name="i-lucide-corner-down-right" class="size-4 shrink-0 text-primary" aria-hidden="true" />
-      <span class="line-clamp-1 flex-1 text-toned">Уточнение: {{ replyText }}</span>
-      <UTooltip text="Отменить уточнение"><UButton color="neutral" variant="ghost" size="sm" square icon="i-lucide-x" aria-label="Отменить уточнение" @click="emit('cancelReply')" /></UTooltip>
-    </div>
     <UChatPrompt
       ref="prompt"
       v-model="text"
       placeholder="Задайте следующий вопрос заказчику..."
-      variant="outline"
+      variant="naked"
       :rows="1"
       :maxrows="6"
       :autofocus="false"
       aria-label="Ваш вопрос заказчику"
-      :ui="{ root: 'flex-row items-end gap-2 p-2', body: 'min-w-0 flex-1 py-1 ps-2', footer: 'shrink-0' }"
+      :ui="{ root: 'flex-row items-center gap-2 rounded-none border-0 bg-default p-0 shadow-none', body: 'min-w-0 flex-1', base: 'min-h-10 py-2', footer: 'shrink-0' }"
       @submit.prevent="submit"
       @update:model-value="error = null"
     >
       <template #footer>
-        <UChatPromptSubmit :disabled="busy || tooLong" color="primary" size="lg" class="rounded-full" aria-label="Отправить" @click.prevent="submit" />
+        <UChatPromptSubmit :disabled="busy || tooLong" color="primary" size="lg" aria-label="Отправить" @click.prevent="submit" />
       </template>
     </UChatPrompt>
-    <div class="flex min-h-6 items-center gap-3 pt-1.5 text-xs text-muted">
+    <div v-if="error || text.length > MAX_MESSAGE - 100" class="flex items-center gap-3 pt-1.5 text-xs text-muted">
       <span v-if="error" class="flex items-center gap-1.5 text-error" role="alert"><UIcon name="i-lucide-circle-alert" class="size-4 shrink-0" />{{ error }}</span>
-      <span v-else-if="!compactLayout">Enter отправляет, Shift + Enter переносит строку</span>
       <span v-if="text.length > MAX_MESSAGE - 100" class="ms-auto" :class="tooLong ? 'text-error' : ''">{{ text.length }}/{{ MAX_MESSAGE }}</span>
     </div>
   </div>

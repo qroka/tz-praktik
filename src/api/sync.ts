@@ -1,24 +1,26 @@
-// Отправка попыток студента преподавателю. Работает только при подключённом сервере и никогда не мешает работе:
-// ошибки молчат, попытка остаётся в браузере и уйдёт при следующей отправке.
-import { serverConnected } from '../data/activeScenario';
+// Хранение попыток на сервере: отправка с номером версии, восстановление по личному коду.
+// Работает только при подключённом сервере и никогда не мешает работе: ошибки молчат,
+// попытка остаётся в браузере и уйдёт при следующей отправке.
+import { serverConnected, type PublicScenario } from '../data/activeScenario';
 import type { Attempt } from '../types';
-import { request } from './client';
+import { ApiError, request } from './client';
 
 const MARK_KEY = 'tz-praktikum:synced:v1';
+const REV_KEY = 'tz-praktikum:rev:v1';
 
 const attemptKey = (attempt: Attempt) => `${attempt.startedAt}|${attempt.seed}`;
 
-function readMark(): string | null {
+function read(key: string): string | null {
   try {
-    return window.localStorage.getItem(MARK_KEY);
+    return window.localStorage.getItem(key);
   } catch {
     return null;
   }
 }
 
-function writeMark(value: string) {
+function write(key: string, value: string) {
   try {
-    window.localStorage.setItem(MARK_KEY, value);
+    window.localStorage.setItem(key, value);
   } catch {
     // Хранилище недоступно: при следующей загрузке попытка отправится ещё раз, сервер примет её без дублей.
   }
@@ -27,16 +29,55 @@ function writeMark(value: string) {
 /** Отметка вида «ключ попытки + признак завершения»: по ней понятно, ушёл ли итог. */
 const markOf = (attempt: Attempt) => `${attemptKey(attempt)}|${attempt.finishedAt ? 'done' : 'open'}`;
 
-export const needsSync = (attempt: Attempt): boolean => serverConnected && Boolean(attempt.finishedAt) && readMark() !== markOf(attempt);
+export const needsSync = (attempt: Attempt): boolean => serverConnected && Boolean(attempt.finishedAt) && read(MARK_KEY) !== markOf(attempt);
 
-/** true — сервер принял попытку. */
-export async function sendAttempt(attempt: Attempt): Promise<boolean> {
-  if (!serverConnected) return false;
+/** Номер версии, которую этот браузер видел на сервере в последний раз (0 — попытка ещё не отправлялась). */
+export function getRev(code: string): number {
   try {
-    await request('/public/attempts', { method: 'POST', body: { scenarioId: attempt.scenarioId, attempt }, timeout: 20000 });
-    writeMark(markOf(attempt));
-    return true;
+    const saved = JSON.parse(read(REV_KEY) ?? 'null') as { code?: string; rev?: number } | null;
+    return saved?.code === code && typeof saved.rev === 'number' ? saved.rev : 0;
   } catch {
-    return false;
+    return 0;
   }
+}
+
+export function setRev(code: string, rev: number) {
+  write(REV_KEY, JSON.stringify({ code, rev }));
+}
+
+export type SyncResult =
+  | { status: 'ok'; rev: number }
+  | { status: 'offline' }
+  | { status: 'rejected'; message: string }
+  | { status: 'conflict'; rev: number; attempt: unknown };
+
+/**
+ * Отправляет попытку. Если за это время другое устройство успело сохранить свою версию, сервер не затирает её:
+ * возвращается conflict, и студент выбирает, какую оставить. force — «оставить мою».
+ */
+export async function sendAttempt(attempt: Attempt, options: { force?: boolean } = {}): Promise<SyncResult> {
+  if (!serverConnected) return { status: 'offline' };
+  const code = attempt.resumeCode;
+  try {
+    const result = await request<{ rev: number; code?: string }>('/public/attempts', {
+      method: 'POST',
+      body: { scenarioId: attempt.scenarioId, attempt, baseRev: code ? getRev(code) : undefined, force: options.force || undefined },
+      timeout: 20000,
+    });
+    if (code) setRev(code, result.rev);
+    write(MARK_KEY, markOf(attempt));
+    return { status: 'ok', rev: result.rev };
+  } catch (error) {
+    if (!(error instanceof ApiError)) return { status: 'offline' };
+    if (error.status === 0 || error.status >= 500 || error.status === 429) return { status: 'offline' };
+    if (error.status === 409 && error.conflict) return { status: 'conflict', rev: error.conflict.rev, attempt: error.conflict.attempt };
+    return { status: 'rejected', message: error.message };
+  }
+}
+
+export type ResumeData = { attempt: unknown; rev: number; scenario: PublicScenario };
+
+/** Попытка по личному коду вместе со сценарием, по которому она шла. */
+export async function fetchByCode(code: string): Promise<ResumeData> {
+  return request<ResumeData>(`/public/attempts/${encodeURIComponent(code)}`, { timeout: 15000 });
 }

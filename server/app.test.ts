@@ -1,17 +1,40 @@
 // @vitest-environment node
 import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { CODE_WORDS } from '../src/shared/resumeCode.ts';
 import { createApp } from './app.ts';
 import { createUser } from './auth.ts';
 import { loadConfig } from './config.ts';
 import { openDb } from './db.ts';
 import { RateLimiter } from './http.ts';
-import { csvCell } from './reports.ts';
+import { backfillFeedback } from './feedback.ts';
+import { unzip } from './testUtils.ts';
 import sample from '../src/data/fixtures/sample-pack.json' with { type: 'json' };
 
 let base = '';
 let close = () => {};
 let cookie = '';
+
+// Попытки отправляет вошедший студент: для каждого имени из попытки заводим аккаунт и подставляем его токен.
+const realFetch = globalThis.fetch;
+const studentTokens = new Map<string, string>();
+async function tokenFor(name: string): Promise<string> {
+  const fullName = name.trim().split(/\s+/).length > 1 ? name : `${name || 'Аноним'} Тестов`;
+  let token = studentTokens.get(fullName);
+  if (!token) {
+    const response = await realFetch(`${base}/api/student/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fullName, group: 'ТЕСТ-1' }) });
+    token = ((await response.json()) as { token: string }).token;
+    studentTokens.set(fullName, token);
+  }
+  return token;
+}
+globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+  if (String(input).endsWith('/api/student/attempts') && init?.method === 'POST' && typeof init.body === 'string') {
+    const name = (JSON.parse(init.body) as { attempt?: { studentName?: string } }).attempt?.studentName ?? '';
+    return realFetch(input, { ...init, headers: { ...(init.headers as Record<string, string>), Authorization: `Bearer ${await tokenFor(name)}` } });
+  }
+  return realFetch(input, init);
+}) as typeof fetch;
 
 const H = { 'Content-Type': 'application/json', 'X-Requested-With': 'tzp' };
 
@@ -25,6 +48,9 @@ async function call(method: string, path: string, body?: unknown, extra: Record<
   const data = type.includes('json') ? await response.json() : await response.text();
   return { status: response.status, data, headers: response.headers };
 }
+
+/** Номер попытки: четыре слова, разные для разных seed (его, как и на сайте, выдаёт клиент). */
+const codeFor = (seed: number) => [0, 1, 2, 3].map((i) => CODE_WORDS[(seed * 7 + i * 31) % CODE_WORDS.length]).join('-');
 
 const attempt = (overrides: Record<string, unknown> = {}) => ({
   version: 1,
@@ -44,6 +70,7 @@ const attempt = (overrides: Record<string, unknown> = {}) => ({
   screen: 'dialog',
   activeSection: 1,
   result: null,
+  resumeCode: codeFor((overrides.seed as number | undefined) ?? 42),
   ...overrides,
 });
 
@@ -77,11 +104,14 @@ beforeAll(async () => {
   close = () => app.server.close();
 });
 
-afterAll(() => close());
+afterAll(() => {
+  globalThis.fetch = realFetch;
+  close();
+});
 
 describe('Авторизация', () => {
   it('админский API закрыт без входа', async () => {
-    for (const path of ['/api/admin/scenarios', '/api/admin/attempts', '/api/admin/stats', '/api/admin/users', '/api/admin/reports/attempts.csv']) {
+    for (const path of ['/api/admin/scenarios', '/api/admin/attempts', '/api/admin/stats', '/api/admin/users', '/api/admin/reports/attempts.xlsx']) {
       expect((await call('GET', path)).status, path).toBe(401);
     }
   });
@@ -126,28 +156,27 @@ describe('Попытки студентов', () => {
     expect(data.kind).toBe('builtin');
   });
   it('попытка сохраняется и обновляется по ключу, а не дублируется', async () => {
-    const first = await fetch(`${base}/api/public/attempts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenarioId: 'hot-water-unit', attempt: attempt() }) });
+    const first = await fetch(`${base}/api/student/attempts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenarioId: 'hot-water-unit', attempt: attempt() }) });
     expect(first.status).toBe(200);
-    await fetch(`${base}/api/public/attempts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenarioId: 'hot-water-unit', attempt: finished(80) }) });
+    await fetch(`${base}/api/student/attempts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenarioId: 'hot-water-unit', attempt: finished(80) }) });
     const list = await call('GET', '/api/admin/attempts');
     expect(list.data.total).toBe(1);
     expect(list.data.items[0].score).toBe(80);
   });
   it('запоздалая незавершённая отправка не затирает результат', async () => {
-    await fetch(`${base}/api/public/attempts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenarioId: 'hot-water-unit', attempt: attempt() }) });
+    await fetch(`${base}/api/student/attempts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenarioId: 'hot-water-unit', attempt: attempt() }) });
     const list = await call('GET', '/api/admin/attempts');
     expect(list.data.items[0].score).toBe(80);
   });
   it('мусор и чужой сценарий отклоняются', async () => {
-    const send = (body: unknown) => fetch(`${base}/api/public/attempts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const send = (body: unknown) => fetch(`${base}/api/student/attempts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     expect((await send({ scenarioId: 'nope', attempt: attempt() })).status).toBe(404);
     expect((await send({ scenarioId: 'hot-water-unit', attempt: attempt({ scenarioId: 'other' }) })).status).toBe(400);
-    expect((await send({ scenarioId: 'hot-water-unit', attempt: attempt({ studentName: '' }) })).status).toBe(400);
     expect((await send({ scenarioId: 'hot-water-unit', attempt: attempt({ startedAt: 'вчера' }) })).status).toBe(400);
     expect((await send('строка')).status).toBe(400);
   });
   it('слишком большое тело отклоняется', async () => {
-    const big = await fetch(`${base}/api/public/attempts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenarioId: 'hot-water-unit', attempt: attempt({ tz: { 1: 'x'.repeat(3_500_000) } }) }) }).catch(() => null);
+    const big = await fetch(`${base}/api/student/attempts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenarioId: 'hot-water-unit', attempt: attempt({ tz: { 1: 'x'.repeat(3_500_000) } }) }) }).catch(() => null);
     expect(big === null || big.status === 413).toBe(true);
   });
   it('поиск по имени не ломается на спецсимволах', async () => {
@@ -180,6 +209,16 @@ describe('Сценарии', () => {
     expect(ok.data.settings.estimatedMinutes).toBe(45);
     expect((await call('PATCH', '/api/admin/scenarios/hot-water-unit', { settings: { estimatedMinutes: 1 } })).status).toBe(400);
   });
+  it('имя и аватарка заказчика сохраняются, чужие данные отклоняются', async () => {
+    const avatar = 'data:image/jpeg;base64,/9j/4AAQSkZJRg==';
+    const ok = await call('PATCH', '/api/admin/scenarios/hot-water-unit', { settings: { customerName: 'Пётр Иванович', customerAvatar: avatar } });
+    expect(ok.data.settings.customerName).toBe('Пётр Иванович');
+    expect(ok.data.settings.customerAvatar).toBe(avatar);
+    expect((await call('PATCH', '/api/admin/scenarios/hot-water-unit', { settings: { customerAvatar: 'https://example.com/a.jpg' } })).status).toBe(400);
+    expect((await call('PATCH', '/api/admin/scenarios/hot-water-unit', { settings: { customerAvatar: 'data:text/html;base64,PGI+' } })).status).toBe(400);
+    const cleared = await call('PATCH', '/api/admin/scenarios/hot-water-unit', { settings: { customerAvatar: '' } });
+    expect(cleared.data.settings.customerAvatar).toBeUndefined();
+  });
   it('текущий сценарий переключается, студентам отдаётся файл', async () => {
     await call('PATCH', '/api/admin/scenarios/sample-compressor', { isCurrent: true });
     const current = await (await fetch(`${base}/api/public/scenario`)).json();
@@ -191,7 +230,7 @@ describe('Сценарии', () => {
     expect((await call('DELETE', '/api/admin/scenarios/hot-water-unit')).status).toBe(400);
     expect((await call('DELETE', '/api/admin/scenarios/sample-compressor')).status).toBe(400);
     await call('PATCH', '/api/admin/scenarios/hot-water-unit', { isCurrent: true });
-    await fetch(`${base}/api/public/attempts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenarioId: 'sample-compressor', attempt: attempt({ scenarioId: 'sample-compressor', studentName: 'Анна' }) }) });
+    await fetch(`${base}/api/student/attempts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenarioId: 'sample-compressor', attempt: attempt({ scenarioId: 'sample-compressor', studentName: 'Анна Тестова', seed: 77 }) }) });
     expect((await call('DELETE', '/api/admin/scenarios/sample-compressor')).status).toBe(409);
     expect((await call('DELETE', '/api/admin/scenarios/sample-compressor?withAttempts=1')).data.deletedAttempts).toBe(1);
   });
@@ -199,7 +238,7 @@ describe('Сценарии', () => {
 
 describe('Статистика и отчёты', () => {
   it('считает итоги, оценки, сведения и штрафы', async () => {
-    await fetch(`${base}/api/public/attempts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenarioId: 'hot-water-unit', attempt: finished(40, 'Мария', 7) }) });
+    await fetch(`${base}/api/student/attempts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenarioId: 'hot-water-unit', attempt: finished(40, 'Мария Тестова', 7) }) });
     const stats = (await call('GET', '/api/admin/stats?scenario=hot-water-unit')).data;
     expect(stats.totals.attempts).toBe(2);
     expect(stats.totals.finished).toBe(2);
@@ -212,20 +251,89 @@ describe('Статистика и отчёты', () => {
     expect(stats.penalties[0].count).toBe(2);
     expect(stats.missedCategories[0]).toEqual({ category: 'modes', count: 2 });
   });
-  it('CSV открывается в Excel и защищён от формул', async () => {
-    const raw = await fetch(`${base}/api/admin/reports/attempts.csv`, { headers: { Cookie: cookie } });
-    const bytes = new Uint8Array(await raw.arrayBuffer());
-    expect([bytes[0], bytes[1], bytes[2]]).toEqual([0xef, 0xbb, 0xbf]);
-    const csv = { data: new TextDecoder().decode(bytes) };
-    expect(csv.data).toContain('№;Сценарий');
-    expect(csv.data).toContain('Мария');
-    expect(csvCell('=HYPERLINK("x")')).toBe(`"'=HYPERLINK(""x"")"`);
-    expect(csvCell('а;б')).toBe('"а;б"');
+  it('таблица попыток скачивается как настоящий xlsx', async () => {
+    const response = await fetch(`${base}/api/admin/reports/attempts.xlsx`, { headers: { Cookie: cookie } });
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    expect(response.headers.get('content-disposition')).toContain('attempts.xlsx');
+    const parts = unzip(Buffer.from(await response.arrayBuffer()));
+    const sheet = parts['xl/worksheets/sheet1.xml'];
+    expect(sheet).toContain('Сценарий');
+    expect(sheet).toContain('Мария Тестова');
+    expect(sheet).toContain('<v>40</v>');
+    expect((await fetch(`${base}/api/admin/reports/attempts.csv`, { headers: { Cookie: cookie } })).status).toBe(404);
   });
   it('отчёт по сценарию содержит таблицы', async () => {
     const report = await call('GET', '/api/admin/reports/scenario/hot-water-unit');
     expect(report.data).toContain('## Итоги');
-    expect(report.data).toContain('Мария');
+    expect(report.data).toContain('Мария Тестова');
+  });
+});
+
+describe('Обратная связь', () => {
+  const rated = (name: string, seed: number, ratings: Record<string, { rating: 'like' | 'dislike'; reason: string } | undefined>) =>
+    attempt({
+      studentName: name,
+      seed,
+      startedAt: `2026-11-02T10:0${seed % 10}:00.000Z`,
+      messages: [
+        { id: 's1', role: 'student', text: 'Какое давление после насоса?', at: '2026-11-02T10:00:01.000Z' },
+        { id: 'c1', role: 'customer', text: 'Нужно 0,3 МПа.', at: '2026-11-02T10:00:02.000Z', intentId: 'press_out', topic: 'press', feedback: ratings.c1 && { ...ratings.c1, at: '2026-11-02T10:00:03.000Z' } },
+        { id: 's2', role: 'student', text: 'А до насоса?', at: '2026-11-02T10:00:04.000Z' },
+        { id: 'c2', role: 'customer', text: 'Не понял вопрос.', at: '2026-11-02T10:00:05.000Z', intentId: null, topic: null, feedback: ratings.c2 && { ...ratings.c2, at: '2026-11-02T10:00:06.000Z' } },
+      ],
+    });
+  const post = (body: unknown) => fetch(`${base}/api/student/attempts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenarioId: 'hot-water-unit', attempt: body }) });
+
+  it('оценки сохраняются вместе с вопросом студента и ответом заказчика', async () => {
+    await post(rated('Оля Тестова', 11, { c1: { rating: 'like', reason: '' }, c2: { rating: 'dislike', reason: 'ответили не на мой вопрос' } }));
+    const data = (await call('GET', '/api/admin/feedback')).data;
+    expect(data.total).toBe(2);
+    const dislike = data.items.find((i: { rating: string }) => i.rating === 'dislike');
+    expect(dislike.question).toBe('А до насоса?');
+    expect(dislike.answer).toBe('Не понял вопрос.');
+    expect(dislike.reason).toBe('ответили не на мой вопрос');
+    expect(dislike.studentName).toBe('Оля Тестова');
+    expect(data.summary).toMatchObject({ total: 2, likes: 1, dislikes: 1, dislikesWithReason: 1 });
+  });
+  it('фильтры по оценке и тексту', async () => {
+    expect((await call('GET', '/api/admin/feedback?rating=like')).data.total).toBe(1);
+    expect((await call('GET', '/api/admin/feedback?rating=dislike')).data.total).toBe(1);
+    expect((await call('GET', '/api/admin/feedback?q=' + encodeURIComponent('не на мой'))).data.total).toBe(1);
+    expect((await call('GET', '/api/admin/feedback?q=%25')).data.total).toBe(0);
+    expect((await call('GET', '/api/admin/feedback?scenario=nope')).data.total).toBe(0);
+  });
+  it('сводка показывает темы с дизлайками', async () => {
+    const { problems } = (await call('GET', '/api/admin/feedback')).data.summary;
+    expect(problems[0].dislikes).toBe(1);
+    expect(problems[0].sampleQuestion).toBe('А до насоса?');
+  });
+  it('снятая студентом оценка исчезает при повторной отправке', async () => {
+    await post(rated('Оля Тестова', 11, { c1: { rating: 'like', reason: '' } }));
+    const data = (await call('GET', '/api/admin/feedback')).data;
+    expect(data.total).toBe(1);
+    expect(data.summary.dislikes).toBe(0);
+  });
+  it('удаление попытки удаляет её оценки', async () => {
+    const list = await call('GET', '/api/admin/attempts?q=' + encodeURIComponent('Оля Тестова'));
+    await call('DELETE', `/api/admin/attempts/${list.data.items[0].id}`);
+    expect((await call('GET', '/api/admin/feedback')).data.total).toBe(0);
+  });
+  it('оценки старых попыток переносятся миграцией', () => {
+    const db = openDb(':memory:');
+    const now = new Date().toISOString();
+    const json = JSON.stringify(rated('Старая', 5, { c2: { rating: 'dislike', reason: 'x' } }));
+    db.prepare('INSERT INTO attempts (client_key, scenario_id, student_name, started_at, updated_at, attempt_json) VALUES (?, ?, ?, ?, ?, ?)').run('k', 'hot-water-unit', 'Старая', now, now, json);
+    expect((db.prepare('SELECT COUNT(*) AS n FROM feedback').get() as { n: number }).n).toBe(0);
+    backfillFeedback(db);
+    expect((db.prepare('SELECT COUNT(*) AS n FROM feedback').get() as { n: number }).n).toBe(1);
+    db.close();
+  });
+  it('без входа раздел закрыт', async () => {
+    const saved = cookie;
+    cookie = '';
+    expect((await call('GET', '/api/admin/feedback')).status).toBe(401);
+    cookie = saved;
   });
 });
 

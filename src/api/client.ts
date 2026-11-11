@@ -3,6 +3,8 @@ const BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/
 
 export class ApiError extends Error {
   status: number;
+  /** Для 409 «conflict»: версия попытки, которая уже лежит на сервере. */
+  conflict?: { rev: number; attempt: unknown };
   constructor(status: number, message: string) {
     super(message);
     this.status = status;
@@ -34,7 +36,10 @@ export async function request<T = unknown>(path: string, options: Options = {}):
     const data = (await response.json()) as T & { error?: string };
     if (!response.ok) {
       if (options.admin && response.status === 401 && path !== '/auth/login') window.dispatchEvent(new Event('tz-admin-expired'));
-      throw new ApiError(response.status, data.error ?? 'Ошибка запроса.');
+      const failure = new ApiError(response.status, data.error ?? 'Ошибка запроса.');
+      const body = data as { error?: string; rev?: number; attempt?: unknown };
+      if (response.status === 409 && body.error === 'conflict' && typeof body.rev === 'number') failure.conflict = { rev: body.rev, attempt: body.attempt };
+      throw failure;
     }
     return data;
   } catch (error) {

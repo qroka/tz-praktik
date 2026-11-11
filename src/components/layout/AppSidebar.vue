@@ -8,9 +8,9 @@ import type { Screen } from '../../types';
 import TzLogo from './TzLogo.vue';
 
 const open = defineModel<boolean>('open', { default: false });
-const emit = defineEmits<{ reset: []; import: [file: File] }>();
+const emit = defineEmits<{ reset: []; import: [file: File]; signout: [] }>();
 
-const { attempt, summary, go, exportProgress } = useSession();
+const { attempt, summary, go, exportProgress, resumeCode, copyCode, copyLink } = useSession();
 const { presets, preset, preference, selectPreset, setMode } = useTheme();
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput');
 
@@ -81,6 +81,15 @@ const menu = computed<DropdownMenuItem[][]>(() => [
     },
   ],
   [{ slot: 'color-mode', type: 'label', class: 'p-1.5 text-sm font-normal' }],
+  ...(resumeCode.value
+    ? [
+        [
+          { label: 'Скопировать код попытки', icon: 'i-lucide-copy', onSelect: () => void copyCode() },
+          { label: 'Скопировать ссылку для продолжения', icon: 'i-lucide-link', onSelect: () => void copyLink() },
+          { label: 'Выйти (работа сохранится)', icon: 'i-lucide-log-out', onSelect: () => afterSidebarClosed(() => emit('signout')) },
+        ],
+      ]
+    : []),
   [
     { label: 'Сохранить файл прогресса', icon: 'i-lucide-download', onSelect: exportProgress },
     { label: 'Загрузить файл прогресса', icon: 'i-lucide-upload', onSelect: () => fileInput.value?.click() },
@@ -108,12 +117,22 @@ function onFile(event: Event) {
     <template #default="{ collapsed }">
       <p v-if="!collapsed" class="px-2 text-xs font-semibold tracking-wide text-dimmed uppercase">Рабочее пространство</p>
       <UNavigationMenu v-for="(group, index) in items" :key="index" :collapsed="collapsed" :items="group" orientation="vertical" tooltip aria-label="Рабочее пространство" />
-      <div v-if="summary && !attempt?.finishedAt && !collapsed" class="mt-auto space-y-2 rounded-lg border border-default bg-elevated/50 p-3">
+      <div v-if="!collapsed" class="mt-auto space-y-3">
+      <div v-if="resumeCode" class="space-y-1.5 rounded-lg border border-default p-3" data-testid="resume-code-card">
+        <p class="text-xs font-semibold tracking-wide text-dimmed uppercase">Код попытки</p>
+        <button type="button" class="flex w-full items-start justify-between gap-2 rounded-md text-left hover:text-highlighted focus-visible:outline-2" title="Скопировать код" data-testid="resume-code" @click="copyCode">
+          <span class="text-sm font-semibold break-words">{{ resumeCode }}</span>
+          <UIcon name="i-lucide-copy" class="mt-0.5 size-4 shrink-0 text-dimmed" />
+        </button>
+        <p class="text-xs text-muted">Запишите код: по нему можно продолжить на другом компьютере.</p>
+      </div>
+      <div v-if="summary && !attempt?.finishedAt" class="space-y-2 rounded-lg border border-default bg-elevated/50 p-3">
         <p class="text-sm font-semibold">До следующего этапа</p>
         <p class="text-xs text-muted">
           {{ summary.remaining > 0 ? `Не начато ${summary.remaining} ${summary.remaining === 1 ? 'направление' : summary.remaining < 5 ? 'направления' : 'направлений'}` : 'Все направления затронуты' }} · обязательные сведения: {{ summary.coveragePercent }}%
         </p>
         <UProgress :model-value="summary.coveragePercent" size="sm" aria-label="Доля выясненных обязательных сведений" />
+      </div>
       </div>
     </template>
 

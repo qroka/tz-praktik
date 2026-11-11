@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import type { AccordionItem } from '@nuxt/ui';
 import { formatTime } from '../../composables/useLayout';
 import { useSession } from '../../composables/useSession';
-import { difficultyLabel, downloadFile, progressFileName, toMarkdown, toPlainText, toProgressJson, toResultJson } from '../../state/exporters';
+import { difficultyLabel } from '../../state/exporters';
 
 const { attempt, scenario } = useSession();
 const result = computed(() => attempt.value!.result!);
@@ -52,7 +52,6 @@ const items = computed<AccordionItem[]>(() => [
 ]);
 
 const sortedEtalon = computed(() => [...result.value.etalon].sort((a, b) => a.section - b.section));
-const print = () => window.print();
 const typeLabel = (type: string) => (type === 'mandatory' ? 'Требование' : type === 'preference' ? 'Пожелание' : 'Предложение');
 </script>
 
@@ -76,14 +75,6 @@ const typeLabel = (type: string) => (type === 'mandatory' ? 'Требовани�
           </div>
         </div>
       </UCard>
-
-      <div class="no-print flex flex-wrap gap-2">
-        <UButton color="neutral" variant="outline" icon="i-lucide-file-text" label="result.md" data-testid="export-md" @click="downloadFile('result.md', toMarkdown(attempt!, scenario), 'text/markdown')" />
-        <UButton color="neutral" variant="outline" icon="i-lucide-download" label="result.txt" data-testid="export-txt" @click="downloadFile('result.txt', toPlainText(attempt!, scenario), 'text/plain')" />
-        <UButton color="neutral" variant="outline" icon="i-lucide-file-json" label="result.json" data-testid="export-json" @click="downloadFile('result.json', toResultJson(attempt!, scenario), 'application/json')" />
-        <UButton color="neutral" variant="outline" icon="i-lucide-save" label="Файл прогресса" data-testid="export-progress" @click="downloadFile(progressFileName(attempt!), toProgressJson(attempt!), 'application/json')" />
-        <UButton color="neutral" variant="outline" icon="i-lucide-printer" label="Печать" data-testid="print" @click="print" />
-      </div>
 
       <div class="grid gap-4 md:grid-cols-2">
         <UCard :ui="{ body: 'space-y-2 p-5' }">
