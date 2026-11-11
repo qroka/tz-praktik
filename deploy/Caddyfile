@@ -1,0 +1,9 @@
+# HTTPS-сертификаты Caddy выпускает и продлевает сам (нужны открытые порты 80 и 443 и A-запись домена).
+tz-praktikum.ru {
+	encode zstd gzip
+	reverse_proxy app:3000
+}
+
+www.tz-praktikum.ru {
+	redir https://tz-praktikum.ru{uri} permanent
+}

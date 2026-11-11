@@ -6,7 +6,8 @@ import ui from '@nuxt/ui/vite';
 // base: путь GitHub Pages https://qroka.github.io/tz-praktik/. Маршрутизация — hash-история,
 // поэтому статическому хостингу не нужен серверный fallback.
 export default defineConfig({
-  base: '/tz-praktik/',
+  // Для GitHub Pages — /tz-praktik/; в Docker-сборке на своём домене VITE_BASE=/.
+  base: process.env.VITE_BASE ?? '/tz-praktik/',
   plugins: [
     vue(),
     ui({

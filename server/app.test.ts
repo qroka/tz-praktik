@@ -1,5 +1,8 @@
 // @vitest-environment node
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { CODE_WORDS } from '../src/shared/resumeCode.ts';
 import { createApp } from './app.ts';
@@ -356,5 +359,26 @@ describe('Выход и ограничения', () => {
     let last = 0;
     for (let i = 0; i < 12; i++) last = (await call('POST', '/api/auth/login', { username: 'teacher', password: 'bad-password-' + i })).status;
     expect(last).toBe(429);
+  });
+});
+
+describe('Сайт на корневом пути (свой домен, BASE_PATH=/)', () => {
+  it('главная и ассеты отдаются без редиректов', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'tzp-static-'));
+    mkdirSync(join(dir, 'assets'));
+    writeFileSync(join(dir, 'index.html'), '<!doctype html><title>ТЗ</title>');
+    writeFileSync(join(dir, 'assets', 'app.js'), 'console.log(1)');
+    const app = createApp(openDb(':memory:'), { ...loadConfig({}), staticDir: dir, basePath: '/' });
+    await new Promise<void>((resolve) => app.server.listen(0, '127.0.0.1', resolve));
+    const url = `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
+    try {
+      const home = await realFetch(`${url}/`, { redirect: 'manual' });
+      expect(home.status).toBe(200);
+      expect(await home.text()).toContain('<title>ТЗ</title>');
+      expect((await realFetch(`${url}/assets/app.js`, { redirect: 'manual' })).status).toBe(200);
+      expect((await realFetch(`${url}/api/public/scenario`)).status).toBe(200);
+    } finally {
+      app.server.close();
+    }
   });
 });

@@ -439,7 +439,7 @@ export function createApp(db: Db, config: Config): App {
       }
 
       if (method === 'GET' || method === 'HEAD') {
-        if (url.pathname === '/') {
+        if (url.pathname === '/' && config.basePath !== '/') {
           res.writeHead(302, { Location: config.basePath });
           res.end();
           return;

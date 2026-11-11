@@ -1,0 +1,30 @@
+# Лежит на сервере в /opt/tz-praktikum. Образ собирает GitHub Actions и публикует в ghcr.io.
+services:
+  app:
+    image: ghcr.io/qroka/tz-praktik:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      COOKIE_SECURE: "1"
+    volumes:
+      - app-data:/data
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  app-data:
+  caddy-data:
+  caddy-config:
