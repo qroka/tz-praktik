@@ -13,6 +13,7 @@ import FeedbackPage from './FeedbackPage.vue';
 import LoginPage from './LoginPage.vue';
 import ReportsPage from './ReportsPage.vue';
 import ScenarioDetailPage from './ScenarioDetailPage.vue';
+import StudentsPage from './StudentsPage.vue';
 import ScenariosPage from './ScenariosPage.vue';
 
 type User = { id: number; username: string };
@@ -27,6 +28,7 @@ const sidebarOpen = ref(false);
 const sections = [
   { id: 'dashboard', label: 'Обзор', icon: 'i-lucide-layout-dashboard', page: DashboardPage },
   { id: 'scenarios', label: 'Сценарии', icon: 'i-lucide-library', page: ScenariosPage },
+  { id: 'students', label: 'Студенты', icon: 'i-lucide-graduation-cap', page: StudentsPage },
   { id: 'attempts', label: 'Ответы студентов', icon: 'i-lucide-users', page: AttemptsPage },
   { id: 'feedback', label: 'Обратная связь', icon: 'i-lucide-thumbs-up', page: FeedbackPage },
   { id: 'reports', label: 'Отчёты', icon: 'i-lucide-file-spreadsheet', page: ReportsPage },

@@ -14,7 +14,7 @@ export const newResumeCode = (): string =>
 let counter = 0;
 export const makeId = (prefix: string): string => `${prefix}-${Date.now().toString(36)}-${(counter++).toString(36)}`;
 
-export function createAttempt(scenario: Scenario, studentName: string, difficulty: Difficulty, seed: number): Attempt {
+export function createAttempt(scenario: Scenario, studentName: string, difficulty: Difficulty, seed: number, student?: { id: number; group: string }): Attempt {
   const engine = createEngineState();
   const greeting = pickVariant(engine, seed, 'greeting', scenario.greeting);
   const at = new Date().toISOString();
@@ -34,6 +34,7 @@ export function createAttempt(scenario: Scenario, studentName: string, difficult
     activeSection: 1,
     result: null,
     resumeCode: newResumeCode(),
+    ...(student ? { studentId: student.id, studentGroup: student.group } : {}),
   };
 }
 

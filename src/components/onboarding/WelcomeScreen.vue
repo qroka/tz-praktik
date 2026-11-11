@@ -5,23 +5,7 @@ import { useSession } from '../../composables/useSession';
 import TzLogo from '../layout/TzLogo.vue';
 import CaseOverview from './CaseOverview.vue';
 
-const { scenario, start, readProgressFile, applyImport, resume, serverEnabled } = useSession();
-
-const code = ref('');
-const codeError = ref<string | null>(null);
-const resuming = ref(false);
-
-async function resumeByCode() {
-  if (resuming.value) return;
-  codeError.value = null;
-  resuming.value = true;
-  try {
-    const result = await resume(code.value);
-    if (!result.ok) codeError.value = result.error;
-  } finally {
-    resuming.value = false;
-  }
-}
+const { scenario, start, readProgressFile, applyImport } = useSession();
 
 const state = reactive({ name: '' });
 const importError = ref<string | null>(null);
@@ -65,15 +49,6 @@ function onFile(event: Event) {
         </UFormField>
         <UButton type="submit" size="xl" block trailing-icon="i-lucide-arrow-right" label="Начать тренировку" />
       </UForm>
-      <template v-if="serverEnabled">
-        <USeparator />
-        <form class="space-y-3" data-testid="resume-form" @submit.prevent="resumeByCode">
-          <p class="text-sm text-muted">Уже начинали? Введите личный код попытки из четырёх слов: работа продолжится с того места, где вы остановились, на любом компьютере.</p>
-          <UInput v-model="code" size="lg" class="w-full" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="лиса мост река замок" aria-label="Код попытки" data-testid="resume-code" />
-          <UButton type="submit" color="neutral" variant="outline" icon="i-lucide-key-round" label="Продолжить по коду" :loading="resuming" :disabled="!code.trim()" data-testid="resume-submit" />
-          <UAlert v-if="codeError" color="error" variant="subtle" icon="i-lucide-circle-alert" :description="codeError" role="alert" data-testid="resume-error" />
-        </form>
-      </template>
       <USeparator />
       <div class="space-y-3">
         <p class="text-sm text-muted">Есть файл прогресса? Можно продолжить работу с места, где вы остановились.</p>

@@ -65,3 +65,28 @@ export const CATEGORY_TITLES: Record<string, string> = {
 };
 
 export const TYPE_LABEL: Record<string, string> = { mandatory: 'Требование', preference: 'Пожелание', proposal: 'Предложение' };
+
+/** Группа студентов со счётчиком. Пустое имя — студенты, которым группу ещё не назначили. */
+export type GroupInfo = { name: string; students: number };
+
+/** Значение фильтра «без группы» (совпадает с серверным). */
+export const NO_GROUP = '__none__';
+
+export async function loadGroups(): Promise<GroupInfo[]> {
+  return (await adminApi.get<{ groups: GroupInfo[] }>('/admin/students?pageSize=1')).groups;
+}
+
+export const groupItems = (groups: GroupInfo[]) => [
+  { label: 'Все группы', value: 'all' },
+  ...groups.map((g) => (g.name ? { label: `${g.name} · ${g.students}`, value: g.name } : { label: `Без группы · ${g.students}`, value: NO_GROUP })),
+];
+
+/** Параметры запроса из набора фильтров: пустые и «все» не передаются. */
+export function filterParams(filters: Record<string, string>, names: string[]): URLSearchParams {
+  const params = new URLSearchParams();
+  for (const name of names) {
+    const value = filters[name];
+    if (value && value !== 'all' && value.trim()) params.set(name, value.trim());
+  }
+  return params;
+}

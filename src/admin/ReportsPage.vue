@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { adminApi } from '../api/client';
-import { downloadFromServer, type ScenarioSummary } from './format';
+import { downloadFromServer, filterParams, groupItems, loadGroups, type GroupInfo, type ScenarioSummary } from './format';
 
 const scenarios = ref<ScenarioSummary[]>([]);
 const scenario = ref('all');
+const group = ref('all');
+const groups = ref<GroupInfo[]>([]);
 const busy = ref('');
 const toast = useToast();
 
@@ -14,6 +16,7 @@ const reportScenario = computed(() => (scenario.value === 'all' ? scenarios.valu
 onMounted(async () => {
   try {
     scenarios.value = (await adminApi.get<{ items: ScenarioSummary[] }>('/admin/scenarios')).items;
+    groups.value = await loadGroups();
   } catch {
     // Без списка доступны только отчёты по всем попыткам.
   }
@@ -34,13 +37,14 @@ async function download(kind: string, path: string, filename: string) {
 <template>
   <div class="space-y-4" data-testid="reports">
     <Teleport to="#admin-navbar-actions" defer>
-      <USelect v-model="scenario" :items="items" class="w-36 sm:w-56" aria-label="Сценарий" />
+      <USelect v-model="group" :items="groupItems(groups)" class="w-32 sm:w-44" aria-label="Группа" data-testid="reports-group" />
+      <USelect v-model="scenario" :items="items" class="w-32 sm:w-56" aria-label="Сценарий" />
     </Teleport>
     <div class="grid gap-4 md:grid-cols-2">
       <UCard :ui="{ body: 'space-y-3 p-5' }">
         <div class="flex items-center gap-2"><UIcon name="i-lucide-file-spreadsheet" class="size-5 text-primary" /><h2 class="font-semibold">Таблица попыток (XLSX)</h2></div>
-        <p class="text-sm text-muted">Все попытки выбранного сценария: студент, время, балл, оценка, число вопросов. Открывается в Excel.</p>
-        <UButton :loading="busy === 'xlsx'" icon="i-lucide-download" label="Скачать XLSX" data-testid="report-xlsx" @click="download('xlsx', `/admin/reports/attempts.xlsx${scenario === 'all' ? '' : `?scenario=${scenario}`}`, 'attempts.xlsx')" />
+        <p class="text-sm text-muted">Попытки выбранного сценария и группы: студент, группа, время, балл, оценка, число вопросов. Открывается в Excel.</p>
+        <UButton :loading="busy === 'xlsx'" icon="i-lucide-download" label="Скачать XLSX" data-testid="report-xlsx" @click="download('xlsx', `/admin/reports/attempts.xlsx?${filterParams({ scenario, group }, ['scenario', 'group'])}`, 'attempts.xlsx')" />
       </UCard>
       <UCard :ui="{ body: 'space-y-3 p-5' }">
         <div class="flex items-center gap-2"><UIcon name="i-lucide-file-text" class="size-5 text-primary" /><h2 class="font-semibold">Отчёт по сценарию (Markdown)</h2></div>

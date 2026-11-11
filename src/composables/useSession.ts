@@ -2,10 +2,10 @@
 // Бизнес-логика остаётся в чистых модулях src/engine и src/state.
 import { computed, ref, shallowRef, watch } from 'vue';
 import { ApiError } from '../api/client';
-import { fetchByCode, getRev, needsSync, sendAttempt, setRev, type SyncResult } from '../api/sync';
+import { canSync, fetchAttempt, getRev, needsSync, sendAttempt, setRev, type SyncResult } from '../api/sync';
+import { loadStudentSession } from '../api/student';
 import { applyRemoteScenario, scenario, serverConnected } from '../data/activeScenario';
-import { normalizeCode } from '../shared/resumeCode';
-import { createAttempt, finishAttempt, newResumeCode, newSeed, sendQuestion, setScreen, validateAttempt } from '../state/attempt';
+import { createAttempt, finishAttempt, newSeed, sendQuestion, setScreen, validateAttempt } from '../state/attempt';
 import { downloadFile, parseProgress, progressFileName, toProgressJson } from '../state/exporters';
 import { buildHint, summarizeProgress } from '../state/learningProgress';
 import { clearAttempt, loadAttempt, saveAttempt } from '../state/storage';
@@ -81,16 +81,19 @@ watch(
   attempt,
   (current) => {
     window.clearTimeout(syncTimer);
-    if (!current || !serverConnected || conflict.value || current.finishedAt || !current.messages.some((m) => m.role === 'student')) return;
+    if (!current || !canSync() || conflict.value || current.finishedAt || !current.messages.some((m) => m.role === 'student')) return;
     syncTimer = window.setTimeout(() => void push(current), 6000);
   },
   { flush: 'post' },
 );
 
-// Попытка начата до появления личных кодов: выдаём код, чтобы к ней можно было вернуться.
-if (attempt.value && serverConnected && !attempt.value.resumeCode) attempt.value = { ...attempt.value, resumeCode: newResumeCode() };
-if (attempt.value && serverConnected && (needsSync(attempt.value) || (attempt.value.resumeCode && getRev(attempt.value.resumeCode) === 0 && attempt.value.messages.some((m) => m.role === 'student')))) {
-  void push(attempt.value);
+// Незавершённая отправка с прошлого раза (закрыли вкладку раньше времени): догоняем, пока студент тот же.
+{
+  const saved = loadStudentSession();
+  const mine = attempt.value;
+  if (mine && saved && canSync() && mine.studentId === saved.student.id && (needsSync(mine) || (mine.resumeCode && getRev(mine.resumeCode) === 0 && mine.messages.some((m) => m.role === 'student')))) {
+    void push(mine);
+  }
 }
 
 function update(change: (current: Attempt) => Attempt) {
@@ -120,9 +123,14 @@ export function useSession() {
     hiddenId.value = null;
     notice.value = null;
     conflict.value = null;
-    if (serverConnected && attempt.value.resumeCode) {
-      notify('info', 'Запомните код попытки', `${attempt.value.resumeCode}. По нему можно продолжить на другом компьютере. Он всегда виден в левом меню.`);
-    }
+  }
+
+  /** Новая попытка вошедшего студента: ФИО и группа берутся из аккаунта. */
+  function startAttempt(student: { id: number; fullName: string; group: string }) {
+    attempt.value = createAttempt(scenario, student.fullName, 'learning', newSeed(), { id: student.id, group: student.group });
+    hiddenId.value = null;
+    notice.value = null;
+    conflict.value = null;
   }
 
   function send(text: string, replyToId: string | null) {
@@ -158,7 +166,7 @@ export function useSession() {
     window.clearTimeout(syncTimer);
     update((a) => finishAttempt(a, scenario));
     const done = attempt.value;
-    if (done && serverConnected) {
+    if (done && canSync()) {
       void push(done).then((result) => {
         if (result.status === 'ok') notify('success', 'Результат отправлен преподавателю');
         else if (result.status !== 'conflict') notify('info', 'Результат пока не отправлен', 'Он сохранён в браузере и уйдёт при следующем открытии сайта. Можно скачать файл прогресса.');
@@ -178,17 +186,18 @@ export function useSession() {
   }
 
   /**
-   * Выход без потери работы (общий компьютер): попытка остаётся на сервере и открывается по коду.
-   * Сначала дожидаемся, что последняя версия ушла на сервер.
+   * Возврат в личный кабинет (и выход из аккаунта): попытка сохраняется на сервере и убирается с экрана.
+   * Если сохранить не удалось, ничего не закрывается, чтобы не потерять работу.
    */
-  async function signOut(): Promise<boolean> {
+  async function leaveAttempt(): Promise<boolean> {
     const current = attempt.value;
     if (!current) return true;
-    if (serverConnected) {
-      window.clearTimeout(syncTimer);
+    window.clearTimeout(syncTimer);
+    const hasWork = current.finishedAt !== null || current.messages.some((m) => m.role === 'student');
+    if (canSync() && hasWork) {
       const result = await push(current);
       if (result.status !== 'ok') {
-        if (result.status !== 'conflict') notify('error', 'Не удалось сохранить на сервере', 'Выход отменён, чтобы не потерять работу. Проверьте соединение и повторите.');
+        if (result.status !== 'conflict') notify('error', 'Не удалось сохранить на сервере', 'Попытка осталась открытой, чтобы не потерять работу. Проверьте соединение и повторите.');
         return false;
       }
     }
@@ -196,22 +205,19 @@ export function useSession() {
     return true;
   }
 
-  /** Возвращает попытку по личному коду: с сервера, вместе с её сценарием. */
-  async function resume(input: string): Promise<{ ok: true } | { ok: false; error: string }> {
-    const code = normalizeCode(input);
-    if (!code) return { ok: false, error: 'Введите четыре слова кода: через пробел или дефис, например «лиса мост река замок».' };
+  /** Открывает попытку из истории кабинета: с сервера, вместе с её сценарием. */
+  async function openFromHistory(key: string): Promise<{ ok: true } | { ok: false; error: string }> {
     try {
-      const data = await fetchByCode(code);
+      const data = await fetchAttempt(key);
       if (data.scenario.id !== scenario.id) applyRemoteScenario(data.scenario);
       const check = validateAttempt(data.attempt, scenario);
       if (!check.ok) return { ok: false, error: check.error };
       window.clearTimeout(typingTimer);
       window.clearTimeout(syncTimer);
-      setRev(code, data.rev);
+      setRev(key, data.rev);
       conflict.value = null;
-      attempt.value = { ...check.attempt, resumeCode: code };
+      attempt.value = check.attempt;
       hiddenId.value = null;
-      notify('success', `Попытка «${check.attempt.studentName}» открыта`);
       return { ok: true };
     } catch (error) {
       if (error instanceof ApiError && error.status === 0) return { ok: false, error: 'Сервер недоступен. Проверьте интернет и повторите.' };
@@ -244,9 +250,6 @@ export function useSession() {
     });
   }
 
-  const resumeCode = computed(() => (serverConnected ? attempt.value?.resumeCode ?? null : null));
-  const resumeLink = computed(() => (resumeCode.value ? `${window.location.origin}${window.location.pathname}#/continue/${encodeURIComponent(resumeCode.value)}` : null));
-
   async function copyText(text: string, done: string) {
     try {
       await navigator.clipboard.writeText(text);
@@ -255,8 +258,6 @@ export function useSession() {
       notify('error', 'Не удалось скопировать', text);
     }
   }
-  const copyCode = () => (resumeCode.value ? copyText(resumeCode.value, 'Код скопирован') : undefined);
-  const copyLink = () => (resumeLink.value ? copyText(resumeLink.value, 'Ссылка скопирована') : undefined);
 
   function applyImport(imported: Attempt) {
     window.clearTimeout(typingTimer);
@@ -301,15 +302,13 @@ export function useSession() {
     showSource,
     finish,
     reset,
-    signOut,
-    resume,
+    startAttempt,
+    leaveAttempt,
+    openFromHistory,
+    copyText,
     conflict,
     useServerVersion,
     keepMine,
-    resumeCode,
-    resumeLink,
-    copyCode,
-    copyLink,
     serverEnabled: computed(() => serverConnected),
     applyImport,
     readProgressFile,

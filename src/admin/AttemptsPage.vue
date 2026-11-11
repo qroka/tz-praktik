@@ -3,9 +3,9 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { adminApi } from '../api/client';
 import AttemptDetail from './AttemptDetail.vue';
 import DateField from './DateField.vue';
-import { dateTime, downloadFromServer, gradeColor, minutesBetween, type ScenarioSummary } from './format';
+import { dateTime, downloadFromServer, filterParams, gradeColor, groupItems, loadGroups, minutesBetween, type GroupInfo, type ScenarioSummary } from './format';
 
-type Row = { id: number; scenarioId: string; scenarioTitle: string | null; studentName: string; startedAt: string; updatedAt: string; finishedAt: string | null; score: number | null; grade: string | null; messages: number; disclosed: number; resumeCode: string | null };
+type Row = { id: number; scenarioId: string; scenarioTitle: string | null; studentName: string; group: string; startedAt: string; updatedAt: string; finishedAt: string | null; score: number | null; grade: string | null; messages: number; disclosed: number };
 
 const scenarios = ref<ScenarioSummary[]>([]);
 const rows = ref<Row[]>([]);
@@ -14,12 +14,14 @@ const page = ref(1);
 const pageSize = 20;
 const error = ref('');
 const loading = ref(false);
-const filters = ref({ scenario: 'all', status: 'all', q: '', from: '', to: '', sort: 'date' });
+const groups = ref<GroupInfo[]>([]);
+const filters = ref({ scenario: 'all', group: 'all', status: 'all', q: '', from: '', to: '', sort: 'date' });
 const openId = ref<number | null>(null);
 
 const scenarioItems = computed(() => [{ label: 'Все сценарии', value: 'all' }, ...scenarios.value.map((s) => ({ label: s.settings.title ?? s.title, value: s.id }))]);
+const groupOptions = computed(() => groupItems(groups.value));
 const statusItems = [{ label: 'Любые', value: 'all' }, { label: 'Завершённые', value: 'finished' }, { label: 'В процессе', value: 'active' }];
-const sortItems = [{ label: 'Сначала новые', value: 'date' }, { label: 'По баллу', value: 'score' }, { label: 'По имени', value: 'name' }];
+const sortItems = [{ label: 'Сначала новые', value: 'date' }, { label: 'По баллу', value: 'score' }, { label: 'По имени', value: 'name' }, { label: 'По группе', value: 'group' }];
 const pages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)));
 
 async function load() {
@@ -27,11 +29,7 @@ async function load() {
   error.value = '';
   const f = filters.value;
   const params = new URLSearchParams({ page: String(page.value), pageSize: String(pageSize), sort: f.sort });
-  if (f.scenario !== 'all') params.set('scenario', f.scenario);
-  if (f.status !== 'all') params.set('status', f.status);
-  if (f.q.trim()) params.set('q', f.q.trim());
-  if (f.from) params.set('from', f.from);
-  if (f.to) params.set('to', f.to);
+  for (const [key, value] of filterParams(f, ['scenario', 'group', 'status', 'q', 'from', 'to'])) params.set(key, value);
   try {
     const data = await adminApi.get<{ items: Row[]; total: number }>(`/admin/attempts?${params}`);
     rows.value = data.items;
@@ -54,8 +52,9 @@ watch(page, load);
 onMounted(async () => {
   try {
     scenarios.value = (await adminApi.get<{ items: ScenarioSummary[] }>('/admin/scenarios')).items;
+    groups.value = await loadGroups();
   } catch {
-    // Нужно только для фильтра.
+    // Нужно только для фильтров.
   }
   await load();
 });
@@ -70,15 +69,16 @@ function onDeleted() {
 <template>
   <div class="space-y-4" data-testid="attempts">
     <Teleport to="#admin-navbar-actions" defer>
-      <UButton color="neutral" variant="outline" icon="i-lucide-file-spreadsheet" aria-label="Скачать таблицу (XLSX)" @click="downloadFromServer(`/admin/reports/attempts.xlsx${filters.scenario === 'all' ? '' : `?scenario=${filters.scenario}`}`, 'attempts.xlsx')"><span class="hidden sm:inline">Скачать таблицу (XLSX)</span></UButton>
+      <UButton color="neutral" variant="outline" icon="i-lucide-file-spreadsheet" aria-label="Скачать таблицу (XLSX)" @click="downloadFromServer(`/admin/reports/attempts.xlsx?${filterParams(filters, ['scenario', 'group'])}`, 'attempts.xlsx')"><span class="hidden sm:inline">Скачать таблицу (XLSX)</span></UButton>
     </Teleport>
 
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-12">
-      <UInput v-model="filters.q" icon="i-lucide-search" placeholder="Имя студента или код попытки" class="lg:col-span-2 xl:col-span-3" aria-label="Поиск по имени" data-testid="attempts-search" />
+      <UInput v-model="filters.q" icon="i-lucide-search" placeholder="ФИО студента или группа" class="lg:col-span-2 xl:col-span-3" aria-label="Поиск по ФИО и группе" data-testid="attempts-search" />
+      <USelect v-model="filters.group" :items="groupOptions" aria-label="Группа" class="xl:col-span-3" data-testid="filter-group" />
       <USelect v-model="filters.scenario" :items="scenarioItems" aria-label="Сценарий" class="xl:col-span-3" />
-      <USelect v-model="filters.status" :items="statusItems" aria-label="Статус" class="xl:col-span-2" />
-      <DateField v-model="filters.from" label="С даты" placeholder="С даты" class="xl:col-span-2" data-testid="filter-from" />
-      <DateField v-model="filters.to" label="По дату" placeholder="По дату" class="xl:col-span-2" data-testid="filter-to" />
+      <USelect v-model="filters.status" :items="statusItems" aria-label="Статус" class="xl:col-span-3" />
+      <DateField v-model="filters.from" label="С даты" placeholder="С даты" class="xl:col-span-3" data-testid="filter-from" />
+      <DateField v-model="filters.to" label="По дату" placeholder="По дату" class="xl:col-span-3" data-testid="filter-to" />
     </div>
     <div class="flex items-center gap-2 text-sm text-muted">
       Сортировка:
@@ -92,14 +92,15 @@ function onDeleted() {
       <table class="w-full text-left text-sm">
         <thead class="bg-elevated/50 text-muted">
           <tr>
-            <th class="p-2 font-medium">Студент</th><th class="p-2 font-medium">Сценарий</th><th class="p-2 font-medium">Начало</th><th class="p-2 font-medium">Время</th>
+            <th class="p-2 font-medium">Студент</th><th class="p-2 font-medium">Группа</th><th class="p-2 font-medium">Сценарий</th><th class="p-2 font-medium">Начало</th><th class="p-2 font-medium">Время</th>
             <th class="p-2 font-medium">Вопросов</th><th class="p-2 font-medium">Раскрыто</th><th class="p-2 font-medium">Балл</th><th class="p-2" />
           </tr>
         </thead>
         <tbody :class="{ 'opacity-60': loading }">
-          <tr v-if="!rows.length && !loading"><td colspan="8" class="p-6 text-center text-muted">Попыток не найдено.</td></tr>
+          <tr v-if="!rows.length && !loading"><td colspan="9" class="p-6 text-center text-muted">Попыток не найдено.</td></tr>
           <tr v-for="row in rows" :key="row.id" class="cursor-pointer border-t border-default hover:bg-elevated/40" :data-testid="`attempt-${row.id}`" @click="openId = row.id">
-            <td class="p-2 font-medium">{{ row.studentName }}<span v-if="row.resumeCode" class="block text-xs font-normal text-muted" :data-testid="`code-${row.id}`">{{ row.resumeCode }}</span></td>
+            <td class="p-2 font-medium">{{ row.studentName }}</td>
+            <td class="p-2 whitespace-nowrap text-muted" :data-testid="`group-${row.id}`">{{ row.group || '—' }}</td>
             <td class="p-2 text-muted">{{ row.scenarioTitle ?? row.scenarioId }}</td>
             <td class="p-2 whitespace-nowrap">{{ dateTime(row.startedAt) }}</td>
             <td class="p-2 whitespace-nowrap">{{ minutesBetween(row.startedAt, row.finishedAt) }}</td>

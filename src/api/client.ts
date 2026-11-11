@@ -11,7 +11,7 @@ export class ApiError extends Error {
   }
 }
 
-type Options = { method?: string; body?: unknown; admin?: boolean; timeout?: number; raw?: boolean };
+type Options = { method?: string; body?: unknown; admin?: boolean; timeout?: number; raw?: boolean; /** Токен вошедшего студента: уходит в Authorization. */ token?: string };
 
 /** Запрос к серверу. Ответ, не являющийся JSON (например, страница 404 статического хостинга), считается «сервера нет». */
 export async function request<T = unknown>(path: string, options: Options = {}): Promise<T> {
@@ -24,6 +24,7 @@ export async function request<T = unknown>(path: string, options: Options = {}):
       signal: controller.signal,
       headers: {
         ...(options.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
         ...(options.admin && options.method && options.method !== 'GET' ? { 'X-Requested-With': 'tzp' } : {}),
       },
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
@@ -36,6 +37,8 @@ export async function request<T = unknown>(path: string, options: Options = {}):
     const data = (await response.json()) as T & { error?: string };
     if (!response.ok) {
       if (options.admin && response.status === 401 && path !== '/auth/login') window.dispatchEvent(new Event('tz-admin-expired'));
+      // Токен студента не подошёл (срок вышел или преподаватель выдал новый код): нужно войти снова.
+      if (options.token && response.status === 401) window.dispatchEvent(new Event('tz-student-expired'));
       const failure = new ApiError(response.status, data.error ?? 'Ошибка запроса.');
       const body = data as { error?: string; rev?: number; attempt?: unknown };
       if (response.status === 409 && body.error === 'conflict' && typeof body.rev === 'number') failure.conflict = { rev: body.rev, attempt: body.attempt };

@@ -2,15 +2,17 @@
 import { computed, useTemplateRef } from 'vue';
 import type { DropdownMenuItem, NavigationMenuItem } from '@nuxt/ui';
 import { useSession } from '../../composables/useSession';
+import { useStudent } from '../../composables/useStudent';
 import { useTheme } from '../../composables/useTheme';
 import { themeAccent, type TzThemePreset } from '../../theme/themes';
 import type { Screen } from '../../types';
 import TzLogo from './TzLogo.vue';
 
 const open = defineModel<boolean>('open', { default: false });
-const emit = defineEmits<{ reset: []; import: [file: File]; signout: [] }>();
+const emit = defineEmits<{ reset: []; import: [file: File] }>();
 
-const { attempt, summary, go, exportProgress, resumeCode, copyCode, copyLink } = useSession();
+const { attempt, summary, go, exportProgress, leaveAttempt, serverEnabled } = useSession();
+const { logout } = useStudent();
 const { presets, preset, preference, selectPreset, setMode } = useTheme();
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput');
 
@@ -34,6 +36,7 @@ const items = computed<NavigationMenuItem[][]>(() => {
   ];
   if (!finished) list.push(entry('tz', 'Редактор ТЗ', 'i-lucide-file-pen-line'));
   list.push(entry('progress', 'Мой прогресс', 'i-lucide-chart-no-axes-column'));
+  if (serverEnabled.value) list.unshift({ label: 'Личный кабинет', icon: 'i-lucide-user-round', onSelect: () => { open.value = false; void leaveAttempt(); } });
   if (finished) list.push(entry('result', 'Результат', 'i-lucide-award'));
   return [list];
 });
@@ -58,7 +61,7 @@ const currentMode = computed(() => modes.find((m) => m.value === preference.valu
 
 // Меню как на ui.nuxt.com: имя, выбор готовой темы, режим, файлы, сброс.
 const menu = computed<DropdownMenuItem[][]>(() => [
-  [{ label: attempt.value?.studentName, description: 'Учебный режим', type: 'label' }],
+  [{ label: attempt.value?.studentName, description: attempt.value?.studentGroup ? `Группа ${attempt.value.studentGroup}` : 'Учебный режим', type: 'label' }],
   [
     {
       label: preset.value.name,
@@ -81,20 +84,21 @@ const menu = computed<DropdownMenuItem[][]>(() => [
     },
   ],
   [{ slot: 'color-mode', type: 'label', class: 'p-1.5 text-sm font-normal' }],
-  ...(resumeCode.value
+  // С аккаунтом попытки хранятся на сервере: возврат в кабинет и выход из аккаунта. Файлы прогресса и сброс нужны только без сервера.
+  ...(serverEnabled.value
     ? [
         [
-          { label: 'Скопировать код попытки', icon: 'i-lucide-copy', onSelect: () => void copyCode() },
-          { label: 'Скопировать ссылку для продолжения', icon: 'i-lucide-link', onSelect: () => void copyLink() },
-          { label: 'Выйти (работа сохранится)', icon: 'i-lucide-log-out', onSelect: () => afterSidebarClosed(() => emit('signout')) },
+          { label: 'Личный кабинет', icon: 'i-lucide-layout-dashboard', onSelect: () => void leaveAttempt() },
+          { label: 'Выйти из аккаунта', icon: 'i-lucide-log-out', onSelect: () => void logout() },
         ],
       ]
-    : []),
-  [
-    { label: 'Сохранить файл прогресса', icon: 'i-lucide-download', onSelect: exportProgress },
-    { label: 'Загрузить файл прогресса', icon: 'i-lucide-upload', onSelect: () => fileInput.value?.click() },
-  ],
-  [{ label: 'Начать заново', icon: 'i-lucide-rotate-ccw', color: 'error', onSelect: () => afterSidebarClosed(() => emit('reset')) }],
+    : [
+        [
+          { label: 'Сохранить файл прогресса', icon: 'i-lucide-download', onSelect: exportProgress },
+          { label: 'Загрузить файл прогресса', icon: 'i-lucide-upload', onSelect: () => fileInput.value?.click() },
+        ],
+        [{ label: 'Начать заново', icon: 'i-lucide-rotate-ccw', color: 'error' as const, onSelect: () => afterSidebarClosed(() => emit('reset')) }],
+      ]),
 ]);
 
 function onFile(event: Event) {
@@ -118,14 +122,6 @@ function onFile(event: Event) {
       <p v-if="!collapsed" class="px-2 text-xs font-semibold tracking-wide text-dimmed uppercase">Рабочее пространство</p>
       <UNavigationMenu v-for="(group, index) in items" :key="index" :collapsed="collapsed" :items="group" orientation="vertical" tooltip aria-label="Рабочее пространство" />
       <div v-if="!collapsed" class="mt-auto space-y-3">
-      <div v-if="resumeCode" class="space-y-1.5 rounded-lg border border-default p-3" data-testid="resume-code-card">
-        <p class="text-xs font-semibold tracking-wide text-dimmed uppercase">Код попытки</p>
-        <button type="button" class="flex w-full items-start justify-between gap-2 rounded-md text-left hover:text-highlighted focus-visible:outline-2" title="Скопировать код" data-testid="resume-code" @click="copyCode">
-          <span class="text-sm font-semibold break-words">{{ resumeCode }}</span>
-          <UIcon name="i-lucide-copy" class="mt-0.5 size-4 shrink-0 text-dimmed" />
-        </button>
-        <p class="text-xs text-muted">Запишите код: по нему можно продолжить на другом компьютере.</p>
-      </div>
       <div v-if="summary && !attempt?.finishedAt" class="space-y-2 rounded-lg border border-default bg-elevated/50 p-3">
         <p class="text-sm font-semibold">До следующего этапа</p>
         <p class="text-xs text-muted">

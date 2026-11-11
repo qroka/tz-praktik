@@ -18,9 +18,8 @@ type Attempt = {
   requirements: { id: string; text: string; category: string; needsClarification: boolean; conflict: boolean }[];
   tz: Record<string, string>;
   result: Result | null;
-  resumeCode?: string;
 };
-type Detail = { id: number; scenarioId: string; scenarioTitle: string | null; attempt: Attempt };
+type Detail = { id: number; scenarioId: string; scenarioTitle: string | null; group?: string; attempt: Attempt };
 
 const props = defineProps<{ id: number | null }>();
 const emit = defineEmits<{ close: []; deleted: [] }>();
@@ -50,17 +49,6 @@ const tabs = [
 
 const tzSections = computed(() => Object.entries(detail.value?.attempt.tz ?? {}).filter(([, text]) => text.trim()).sort(([a], [b]) => Number(a) - Number(b)));
 
-const toast = useToast();
-async function copyCode(code: string | undefined) {
-  if (!code) return;
-  try {
-    await navigator.clipboard.writeText(code);
-    toast.add({ title: 'Код скопирован', description: 'Продиктуйте его студенту: по нему он продолжит работу.', color: 'success', icon: 'i-lucide-circle-check' });
-  } catch {
-    toast.add({ title: 'Не удалось скопировать', description: code, color: 'error', icon: 'i-lucide-circle-alert' });
-  }
-}
-
 async function remove() {
   if (!detail.value) return;
   await adminApi.del(`/admin/attempts/${detail.value.id}`);
@@ -75,9 +63,7 @@ async function remove() {
       <p v-else-if="!detail" class="text-muted">Загрузка…</p>
       <div v-else class="space-y-4" data-testid="attempt-detail">
         <div class="flex flex-wrap items-center gap-2 text-sm text-muted">
-          <button v-if="detail.attempt.resumeCode" type="button" class="inline-flex items-center gap-1 rounded-md bg-elevated px-2 py-0.5 font-medium text-default hover:bg-accented" title="Скопировать код попытки" data-testid="attempt-code" @click="copyCode(detail.attempt.resumeCode)">
-            <UIcon name="i-lucide-key-round" class="size-3.5" />{{ detail.attempt.resumeCode }}<UIcon name="i-lucide-copy" class="size-3.5 text-dimmed" />
-          </button>
+          <UBadge v-if="detail.group" :label="`Группа ${detail.group}`" color="neutral" variant="subtle" icon="i-lucide-users" data-testid="attempt-group" />
           <span>Начало: {{ dateTime(detail.attempt.startedAt) }}</span>
           <span>· время: {{ minutesBetween(detail.attempt.startedAt, detail.attempt.finishedAt) }}</span>
           <UBadge v-if="detail.attempt.result" :label="`${detail.attempt.result.total} · ${detail.attempt.result.grade}`" :color="gradeColor(detail.attempt.result.total)" variant="subtle" />

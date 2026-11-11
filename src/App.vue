@@ -1,19 +1,21 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import { ru } from '@nuxt/ui/locale';
 import { useMediaQuery } from '@vueuse/core';
 import { useSession } from './composables/useSession';
+import { useStudent } from './composables/useStudent';
 import { useTheme } from './composables/useTheme';
-import { normalizeCode } from './shared/resumeCode';
 import WelcomeScreen from './components/onboarding/WelcomeScreen.vue';
+import CabinetScreen from './components/student/CabinetScreen.vue';
+import StudentAuthScreen from './components/student/StudentAuthScreen.vue';
 import WorkspaceShell from './components/layout/WorkspaceShell.vue';
 
 const AdminApp = defineAsyncComponent(() => import('./admin/AdminApp.vue'));
 const route = useRoute();
-const router = useRouter();
 const isAdmin = computed(() => route.path.startsWith('/admin'));
-const { attempt, notice, resume } = useSession();
+const { attempt, notice, serverEnabled } = useSession();
+const { student, newCode } = useStudent();
 const toast = useToast();
 useTheme().install();
 
@@ -36,26 +38,17 @@ watch(notice, (value) => {
     duration: value.kind === 'error' ? 8000 : 4000,
   });
 }, { immediate: true });
-// Ссылка для продолжения (#/continue/<код>): открывает попытку на этом устройстве.
-// На общем компьютере чужая незавершённая попытка заменяется: её копия лежит на сервере и открывается по её коду.
-watch(
-  () => (route.path.startsWith('/continue') ? route.params.code : undefined),
-  async (code) => {
-    if (typeof code !== 'string' || !code) return;
-    const known = normalizeCode(code);
-    if (!known || known !== attempt.value?.resumeCode) {
-      const result = await resume(code);
-      if (!result.ok) toast.add({ title: 'Попытка не открыта', description: result.error, color: 'error', icon: 'i-lucide-circle-alert', duration: 8000 });
-    }
-    void router.replace('/');
-  },
-  { immediate: true },
-);
 </script>
 
 <template>
   <UApp :locale="ru" :toaster="toaster">
     <AdminApp v-if="isAdmin" />
+    <!-- С сервером: вход по коду или регистрация, личный кабинет, затем попытка. Без сервера: имя и локальное хранение. -->
+    <template v-else-if="serverEnabled">
+      <StudentAuthScreen v-if="!student || newCode" />
+      <WorkspaceShell v-else-if="attempt" />
+      <CabinetScreen v-else />
+    </template>
     <WorkspaceShell v-else-if="attempt" />
     <WelcomeScreen v-else />
   </UApp>

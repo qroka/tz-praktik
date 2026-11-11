@@ -13,6 +13,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     AnswerFeedbackModal: typeof import('./src/components/chat/AnswerFeedbackModal.vue')['default']
     AppSidebar: typeof import('./src/components/layout/AppSidebar.vue')['default']
+    CabinetScreen: typeof import('./src/components/student/CabinetScreen.vue')['default']
     CaseOverview: typeof import('./src/components/onboarding/CaseOverview.vue')['default']
     CategoryProgress: typeof import('./src/components/progress/CategoryProgress.vue')['default']
     ChatComposer: typeof import('./src/components/chat/ChatComposer.vue')['default']
@@ -29,6 +30,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SaveStatus: typeof import('./src/components/layout/SaveStatus.vue')['default']
+    StudentAuthScreen: typeof import('./src/components/student/StudentAuthScreen.vue')['default']
     TzEditor: typeof import('./src/components/editor/TzEditor.vue')['default']
     TzLogo: typeof import('./src/components/layout/TzLogo.vue')['default']
     UAccordion: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Accordion.vue')['default']

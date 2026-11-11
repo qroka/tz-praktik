@@ -10,7 +10,6 @@ const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/admin/:section?/:id?', component: { render: () => null } },
-    { path: '/continue/:code?', component: { render: () => null } },
     { path: '/:pathMatch(.*)*', component: { render: () => null } },
   ],
 });

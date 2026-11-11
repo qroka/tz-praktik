@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { adminApi } from '../api/client';
-import { CATEGORY_TITLES, day, TYPE_LABEL, type ScenarioSummary } from './format';
+import { CATEGORY_TITLES, day, filterParams, groupItems, loadGroups, TYPE_LABEL, type GroupInfo, type ScenarioSummary } from './format';
 
 type Stats = {
   totals: { attempts: number; finished: number; inProgress: number; students: number; avgScore: number | null; medianScore: number | null; minScore: number | null; maxScore: number | null; avgMinutes: number | null; avgQuestions: number | null };
@@ -18,6 +18,8 @@ const scenarios = ref<ScenarioSummary[]>([]);
 const scenario = ref('all');
 const stats = ref<Stats | null>(null);
 const error = ref('');
+const group = ref('all');
+const groups = ref<GroupInfo[]>([]);
 const showAllFacts = ref(false);
 
 const scenarioItems = computed(() => [{ label: 'Все сценарии', value: 'all' }, ...scenarios.value.map((item) => ({ label: item.settings.title ?? item.title, value: item.id }))]);
@@ -25,7 +27,7 @@ const scenarioItems = computed(() => [{ label: 'Все сценарии', value:
 async function load() {
   error.value = '';
   try {
-    stats.value = await adminApi.get<Stats>(`/admin/stats${scenario.value === 'all' ? '' : `?scenario=${encodeURIComponent(scenario.value)}`}`);
+    stats.value = await adminApi.get<Stats>(`/admin/stats?${filterParams({ scenario: scenario.value, group: group.value }, ['scenario', 'group'])}`);
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Ошибка загрузки.';
   }
@@ -34,12 +36,13 @@ async function load() {
 onMounted(async () => {
   try {
     scenarios.value = (await adminApi.get<{ items: ScenarioSummary[] }>('/admin/scenarios')).items;
+    groups.value = await loadGroups();
   } catch {
-    // Список сценариев нужен только для фильтра.
+    // Списки нужны только для фильтров.
   }
   await load();
 });
-watch(scenario, load);
+watch([scenario, group], load);
 
 const cards = computed(() => {
   const t = stats.value?.totals;
@@ -61,7 +64,8 @@ const visibleFacts = computed(() => (showAllFacts.value ? stats.value?.facts : s
 <template>
   <div class="space-y-6" data-testid="dashboard">
     <Teleport to="#admin-navbar-actions" defer>
-      <USelect v-model="scenario" :items="scenarioItems" class="w-36 sm:w-56" aria-label="Сценарий" />
+      <USelect v-model="group" :items="groupItems(groups)" class="w-32 sm:w-44" aria-label="Группа" data-testid="dashboard-group" />
+      <USelect v-model="scenario" :items="scenarioItems" class="w-32 sm:w-56" aria-label="Сценарий" />
     </Teleport>
 
     <UAlert v-if="error" color="error" variant="subtle" icon="i-lucide-circle-alert" :description="error" />

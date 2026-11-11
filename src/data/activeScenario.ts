@@ -3,6 +3,7 @@
 // 2. Без сервера: файл scenario/scenariy.json, если он собирается без ошибок.
 // 3. Иначе — встроенный кейс «Узел горячей воды».
 import { request } from '../api/client';
+import { getStudentToken } from '../api/student';
 import { STORAGE_KEY } from '../state/storage';
 import type { Scenario } from '../types';
 import { scenario as builtIn } from './scenario';
@@ -48,7 +49,7 @@ export let scenario: Scenario = fromFile();
 /** Подключён ли сервер: только тогда попытки отправляются преподавателю. */
 export let serverConnected = false;
 
-export type PublicScenario = { id: string; kind: 'builtin' | 'pack'; settings: ScenarioSettings; pack: ScenarioPack | null };
+export type PublicScenario = { id: string; kind: 'builtin' | 'pack'; title?: string; settings: ScenarioSettings; pack: ScenarioPack | null };
 
 /** Делает сценарий с сервера активным. Бросает ошибку, если файл сценария не собирается. */
 export function applyRemoteScenario(remote: PublicScenario): void {
@@ -67,12 +68,24 @@ export function applyRemoteScenario(remote: PublicScenario): void {
  */
 async function restoreScenarioOfLocalAttempt(): Promise<void> {
   try {
+    const token = getStudentToken();
     const saved = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? 'null') as { scenarioId?: string; resumeCode?: string } | null;
-    if (!saved?.resumeCode || !saved.scenarioId || saved.scenarioId === scenario.id) return;
-    const found = await request<{ scenario: PublicScenario }>(`/public/attempts/${encodeURIComponent(saved.resumeCode)}`, { timeout: 5000 });
+    if (!token || !saved?.resumeCode || !saved.scenarioId || saved.scenarioId === scenario.id) return;
+    const found = await request<{ scenario: PublicScenario }>(`/student/attempts/${encodeURIComponent(saved.resumeCode)}`, { token, timeout: 5000 });
     if (found.scenario.id === saved.scenarioId) applyRemoteScenario(found.scenario);
   } catch {
     // Сервер не знает эту попытку или недоступен: остаётся текущий сценарий.
+  }
+}
+
+/** Возвращает сценарий, который преподаватель выбрал для новых попыток (после просмотра старой попытки активным мог остаться другой). */
+export async function refreshCurrentScenario(): Promise<PublicScenario | null> {
+  try {
+    const remote = await request<PublicScenario>('/public/scenario', { timeout: 5000 });
+    applyRemoteScenario(remote);
+    return remote;
+  } catch {
+    return null;
   }
 }
 
