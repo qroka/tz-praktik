@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { adminApi } from '../api/client';
+import { convertForeignPack } from '../data/packConverter';
 import { buildScenarioFromPack, checkRecognition, type ScenarioPack } from '../data/scenarioPack';
 import { dateTime, downloadFromServer, downloadText, gradeColor, type ScenarioSummary } from './format';
 
@@ -84,7 +85,10 @@ async function saveSettings() {
 }
 
 // --- Загрузка файла сценария ---
-type Check = { pack: ScenarioPack; errors: string[]; warnings: string[]; recognition: { total: number; misses: string[] } | null; exists: boolean };
+type Check = { pack: ScenarioPack; errors: string[]; warnings: string[]; notes: string[]; recognition: { total: number; misses: string[] } | null; exists: boolean };
+
+/** Сколько ошибок показывать сразу: у файла в чужом формате их сотни, важны первые. */
+const SHOWN_ERRORS = 12;
 const check = ref<Check | null>(null);
 const checkOpen = computed({ get: () => check.value !== null, set: (open) => !open && (check.value = null) });
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -97,16 +101,27 @@ async function onFile(event: Event) {
   input.value = '';
   if (!file) return;
   if (file.size > 5 * 1024 * 1024) return fail(new Error('Файл больше 5 МБ.'));
-  let pack: ScenarioPack;
+  let parsed: unknown;
   try {
-    pack = JSON.parse(await file.text()) as ScenarioPack;
+    parsed = JSON.parse(await file.text());
   } catch {
     return fail(new Error('Файл не читается как JSON. Чаще всего пропущена запятая или лишняя запятая в конце списка.'));
   }
-  const { scenario, report } = buildScenarioFromPack(pack);
-  const recognition = report.errors.length ? null : checkRecognition(scenario, pack);
-  replace.value = false;
-  check.value = { pack, errors: report.errors, warnings: report.warnings, recognition, exists: items.value.some((item) => item.id === pack.scenario?.id) };
+  try {
+    // Файл мог быть подготовлен не по нашему промту (schemaVersion, answers…): преобразуем его, а не отклоняем.
+    const converted = convertForeignPack(parsed);
+    const pack = (converted?.pack ?? parsed) as ScenarioPack;
+    const { scenario, report } = buildScenarioFromPack(pack);
+    const recognition = scenario && !report.errors.length ? checkRecognition(scenario, pack) : null;
+    replace.value = false;
+    check.value = {
+      pack, errors: report.errors, warnings: report.warnings, notes: converted?.notes ?? [], recognition,
+      exists: items.value.some((item) => item.id === pack.scenario?.id),
+    };
+  } catch (e) {
+    // Сборка не должна падать молча: любая неожиданность показывается преподавателю.
+    fail(new Error(`Не удалось проверить файл: ${e instanceof Error ? e.message : String(e)}`));
+  }
 }
 
 async function upload() {
@@ -228,8 +243,14 @@ async function remove() {
           <p class="text-sm">
             <b>{{ check.pack.scenario?.title ?? 'Без названия' }}</b> · сведений: {{ check.pack.facts?.length ?? 0 }}
           </p>
-          <UAlert v-if="check.errors.length" color="error" variant="subtle" icon="i-lucide-circle-x" title="Файл нельзя загрузить: есть ошибки">
-            <template #description><ul class="list-disc pl-5"><li v-for="e in check.errors" :key="e">{{ e }}</li></ul></template>
+          <UAlert v-if="check.notes.length" color="info" variant="subtle" icon="i-lucide-wand-sparkles" title="Файл преобразован автоматически" data-testid="scenario-notes">
+            <template #description><ul class="list-disc pl-5"><li v-for="n in check.notes" :key="n">{{ n }}</li></ul></template>
+          </UAlert>
+          <UAlert v-if="check.errors.length" color="error" variant="subtle" icon="i-lucide-circle-x" :title="`Файл нельзя загрузить: ошибок ${check.errors.length}`" data-testid="scenario-errors">
+            <template #description>
+              <ul class="max-h-48 list-disc overflow-y-auto pl-5"><li v-for="e in check.errors.slice(0, SHOWN_ERRORS)" :key="e">{{ e }}</li></ul>
+              <p v-if="check.errors.length > SHOWN_ERRORS" class="mt-1 text-xs">…и ещё {{ check.errors.length - SHOWN_ERRORS }}. Скорее всего, файл составлен не по формату из docs/prompt-novyj-scenarij.md: попросите ChatGPT выдать его в этом формате.</p>
+            </template>
           </UAlert>
           <UAlert v-else color="success" variant="subtle" icon="i-lucide-circle-check" title="Ошибок нет" />
           <UAlert v-if="check.recognition" :color="check.recognition.misses.length ? 'warning' : 'success'" variant="subtle" icon="i-lucide-search-check" :title="`Вопросы распознаются: ${check.recognition.total - check.recognition.misses.length} из ${check.recognition.total}`">

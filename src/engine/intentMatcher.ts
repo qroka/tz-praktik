@@ -2,7 +2,7 @@
 import type { Ambiguity, Intent, Scenario } from '../types';
 import { extractNumbers, fuzzyStartsWith, normalizeText, stem, tokenize, type ParsedNumber } from './normalizeText';
 
-import { detectQuestionFrame, frameAllows, type QuestionFrame } from './questionFrame';
+import { detectQuestionFrame, frameAllows, withoutDomainFrames, type QuestionFrame } from './questionFrame';
 
 export type Analysis = {
   frame: QuestionFrame;
@@ -100,7 +100,7 @@ export function analyze(text: string, scenario: Scenario): Analysis {
     if (parts.every((concept) => concepts.has(concept))) concepts.add(combo);
   }
   return {
-    frame: detectQuestionFrame(normalized, concepts),
+    frame: scenario.disableFrames ? withoutDomainFrames(detectQuestionFrame(normalized, concepts)) : detectQuestionFrame(normalized, concepts),
     normalized,
     tokens,
     stems: tokens.map(stem),

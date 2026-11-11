@@ -79,6 +79,29 @@ export function detectQuestionFrame(normalized: string, concepts: Set<string>) {
 
 export type QuestionFrame = ReturnType<typeof detectQuestionFrame>;
 
+/**
+ * Рамки вопроса написаны под встроенный кейс (насос, теплообменник): они сразу отвечают его намерениями
+ * и отсекают остальные. Для загруженных сценариев предметные рамки отключаются: остаются время и аспект вопроса.
+ */
+export function withoutDomainFrames(frame: QuestionFrame): QuestionFrame {
+  return {
+    ...frame,
+    currentPump: false,
+    responsibility: false,
+    mixedModes: false,
+    currentOperation: false,
+    inventory: false,
+    composition: false,
+    monitorFuture: false,
+    goal: false,
+    powerLoss: false,
+    dryRun: false,
+    noFlowInterlock: false,
+    pressControl: false,
+    bareSide: false,
+  };
+}
+
 /** Действие вопроса для диагностики: что студент хочет узнать. */
 export function frameAction(frame: QuestionFrame, concepts: Set<string>): string {
   if (frame.inventory || frame.composition) return 'inventory';

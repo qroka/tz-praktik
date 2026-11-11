@@ -1,13 +1,14 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { Scenario } from '../../types';
 
-defineProps<{ scenario: Scenario }>();
+const props = defineProps<{ scenario: Scenario }>();
 
-const steps = [
+const steps = computed(() => [
   { icon: 'i-lucide-messages-square', title: 'Спросить', text: 'Выясняйте процесс, оборудование, режимы и аварии.' },
   { icon: 'i-lucide-clipboard-list', title: 'Зафиксировать', text: 'Реестр требований — ваши подтверждённые сведения. Потом вы перенесёте их в ТЗ.' },
-  { icon: 'i-lucide-file-text', title: 'Составить ТЗ', text: 'Заполните 13 разделов своими словами.' },
-];
+  { icon: 'i-lucide-file-text', title: 'Составить ТЗ', text: `Заполните разделов: ${props.scenario.tzSections.length}. Своими словами.` },
+]);
 
 // Три вида сведений, которые важно не путать в ТЗ.
 const kinds = [

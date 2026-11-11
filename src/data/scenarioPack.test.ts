@@ -8,7 +8,9 @@ const recognition = checkRecognition;
 
 describe('Сборка сценария из файла (пример)', () => {
   const pack = sample as unknown as ScenarioPack;
-  const { scenario, report } = buildScenarioFromPack(pack);
+  const built = buildScenarioFromPack(pack);
+  const report = built.report;
+  const scenario = built.scenario!;
 
   it('файл проходит проверку', () => expect(report.errors).toEqual([]));
   it('сценарий содержит факты, намерения и ответы', () => {
@@ -48,7 +50,7 @@ describe.runIf(import.meta.env.MODE === 'scenario')('Проверка scenario/s
     const pack = JSON.parse(readFileSync(path, 'utf8')) as ScenarioPack;
     const { scenario, report } = buildScenarioFromPack(pack);
     const lines = ['# Отчёт проверки сценария', '', `Сведений: ${pack.facts?.length ?? 0}`, '', '## Ошибки (мешают подключить)', ...(report.errors.length ? report.errors.map((e) => `- ${e}`) : ['нет']), '', '## Замечания', ...(report.warnings.length ? report.warnings.map((w) => `- ${w}`) : ['нет'])];
-    if (!report.errors.length) {
+    if (scenario && !report.errors.length) {
       const { total, misses } = recognition(scenario, pack);
       lines.push('', `## Распознавание вопросов: ${total - misses.length} из ${total}`, ...(misses.length ? misses.map((m) => `- ${m}`) : ['все вопросы распознаются']));
     }

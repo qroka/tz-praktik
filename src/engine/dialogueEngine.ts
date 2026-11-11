@@ -19,7 +19,7 @@ import { discloseFacts, factById, isDisclosed, missingPrerequisites } from './fa
 import { analyze, contextConcepts, findAmbiguity, matchByExample, MIN_INTENT_SCORE, rankIntents, type Analysis, type MatchContext } from './intentMatcher';
 import { prepareMessage } from './messagePrep';
 import { normalizeText } from './normalizeText';
-import { detectQuestionFrame, frameAction } from './questionFrame';
+import { detectQuestionFrame, frameAction, withoutDomainFrames } from './questionFrame';
 import type { ParsedNumber } from './normalizeText';
 import { fillTemplate, pickVariant } from './responseSelector';
 
@@ -659,7 +659,8 @@ export function respond(previous: EngineState, input: DialogueInput, scenario: S
   if (!ownSubject && elliptical) {
     const carriedSubjects = [...contextConcepts(analysis, baseCtx, scenario)].filter((concept) => scenario.subjectConcepts.includes(concept));
     if (carriedSubjects.length) {
-      const frame = detectQuestionFrame(analysis.normalized, new Set([...analysis.concepts, ...carriedSubjects]));
+      const detected = detectQuestionFrame(analysis.normalized, new Set([...analysis.concepts, ...carriedSubjects]));
+      const frame = scenario.disableFrames ? withoutDomainFrames(detected) : detected;
       analysis = { ...analysis, frame };
       question.aspect = frame.aspect;
     }
@@ -710,7 +711,14 @@ export function respond(previous: EngineState, input: DialogueInput, scenario: S
     }
     const missed = result.reply.quality === 'unrecognized' || (result.reply.quality === 'clarify' && reason === 'Непонятый вопрос: уточнение по предмету');
     next = { ...next, lastAttributes: attributes, missStreak: missed ? next.missStreak ?? 0 : 0 };
-    return { state: next, reply: { ...result.reply, text, diagnostic: { reason, score, frame: diagnosticFrame } } };
+    // Сведение, которого заказчик не знает: класс неизвестности ставится по распознанному намерению, а не по словам вопроса.
+    let uncertainty = result.reply.uncertainty;
+    const byIntent = !uncertainty && result.reply.intentId ? scenario.unknownTopics?.find((topic) => topic.intentOnly && topic.id === result.reply.intentId) : undefined;
+    if (byIntent) {
+      uncertainty = { id: byIntent.id, kind: byIntent.kind, label: byIntent.label, category: byIntent.category };
+      if (!next.uncertain?.includes(byIntent.id)) next = { ...next, uncertain: [...(next.uncertain ?? []), byIntent.id] };
+    }
+    return { state: next, reply: { ...result.reply, text, ...(uncertainty ? { uncertainty } : {}), diagnostic: { reason, score, frame: diagnosticFrame } } };
   };
 
   /** Честная оговорка о неизвестном: заменяет ответ невпопад или дополняет ответ по фактам рядом. */

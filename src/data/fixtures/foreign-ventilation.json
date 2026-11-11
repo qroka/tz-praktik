@@ -1,0 +1,1617 @@
+{
+    "schemaVersion": "1.0",
+    "scenarioId": "ventilation_workshop_auto_temperature_001",
+    "title": "Автоматизация приточно-вытяжной вентиляции производственного цеха",
+    "language": "ru",
+    "customer": {
+        "name": "Артём Олегович",
+        "role": "мастер цеха",
+        "tone": "дружелюбный, занятой, отвечает коротко и только на заданный вопрос",
+        "knowledgeBoundary": "хорошо знает существующее оборудование и текущую эксплуатацию, но не выбирает контроллер, SCADA, датчики и другие проектные решения"
+    },
+    "studentRole": "инженер по автоматизации",
+    "categories": [
+        {
+            "id": "object",
+            "name": "Объект автоматизации"
+        },
+        {
+            "id": "current_system",
+            "name": "Текущее состояние системы"
+        },
+        {
+            "id": "automation_goal",
+            "name": "Цель автоматизации"
+        },
+        {
+            "id": "temperature_requirements",
+            "name": "Температурные требования"
+        },
+        {
+            "id": "schedule",
+            "name": "График работы"
+        },
+        {
+            "id": "startup_shutdown",
+            "name": "Пуск и останов"
+        },
+        {
+            "id": "modes",
+            "name": "Режимы работы"
+        },
+        {
+            "id": "alarms_interlocks",
+            "name": "Предупреждения, аварии и блокировки"
+        },
+        {
+            "id": "actuators",
+            "name": "Исполнительные устройства"
+        },
+        {
+            "id": "operator_scada",
+            "name": "Оператор и SCADA"
+        },
+        {
+            "id": "power",
+            "name": "Электропитание"
+        },
+        {
+            "id": "environment",
+            "name": "Условия эксплуатации"
+        },
+        {
+            "id": "unknowns_design",
+            "name": "Неизвестные данные и проектные решения"
+        }
+    ],
+    "tzSections": [
+        {
+            "id": "general_information",
+            "name": "Общие сведения"
+        },
+        {
+            "id": "system_purpose",
+            "name": "Назначение системы"
+        },
+        {
+            "id": "automation_object",
+            "name": "Характеристика объекта автоматизации"
+        },
+        {
+            "id": "existing_system",
+            "name": "Существующая система"
+        },
+        {
+            "id": "functional_requirements",
+            "name": "Функциональные требования"
+        },
+        {
+            "id": "measurement_requirements",
+            "name": "Требования к измерениям"
+        },
+        {
+            "id": "control_algorithms",
+            "name": "Алгоритмы управления"
+        },
+        {
+            "id": "operating_modes",
+            "name": "Режимы работы"
+        },
+        {
+            "id": "alarms_and_safety",
+            "name": "Аварии, предупреждения и защиты"
+        },
+        {
+            "id": "operator_interface",
+            "name": "Интерфейс оператора"
+        },
+        {
+            "id": "power_supply",
+            "name": "Электропитание"
+        },
+        {
+            "id": "operating_conditions",
+            "name": "Условия эксплуатации"
+        },
+        {
+            "id": "design_and_acceptance",
+            "name": "Проектные решения и уточнения"
+        }
+    ],
+    "trapNotes": [],
+    "facts": [
+        {
+            "id": "F001",
+            "title": "Объект автоматизации",
+            "category": "object",
+            "tzSection": "automation_object",
+            "value": "производственный цех",
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "general",
+            "prerequisites": [],
+            "questions": [
+                "Что за помещение автоматизируем?",
+                "А объект вообще какой, цех или склад?",
+                "Где эта вентиляция стоит?"
+            ],
+            "answers": [
+                "Производственный цех, обычное рабочее помещение.",
+                "Это именно производственный цех.",
+                "В цехе. Там люди всю смену работают."
+            ],
+            "repeatAnswers": [
+                "Да, производственный цех."
+            ]
+        },
+        {
+            "id": "F002",
+            "title": "Тип существующей вентиляции",
+            "category": "current_system",
+            "tzSection": "existing_system",
+            "value": "приточно-вытяжная вентиляция",
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "general",
+            "prerequisites": [],
+            "questions": [
+                "Какая вентиляция сейчас стоит?",
+                "Там приточка или вытяжка отдельно?",
+                "Что за система вентиляции у вас?"
+            ],
+            "answers": [
+                "Приточно-вытяжная система.",
+                "И приток, и вытяжка есть.",
+                "Обычная приточно-вытяжная вентиляция."
+            ],
+            "repeatAnswers": [
+                "Приточно-вытяжная."
+            ]
+        },
+        {
+            "id": "F003",
+            "title": "Наличие нагревателя",
+            "category": "actuators",
+            "tzSection": "existing_system",
+            "value": true,
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "general",
+            "prerequisites": [],
+            "questions": [
+                "Нагрев воздуха сейчас есть?",
+                "Есть нагреватель в вентиляции?",
+                "Чем воздух греете?"
+            ],
+            "answers": [
+                "Да, нагреватель уже стоит.",
+                "Есть нагреватель, его оператор сейчас вручную регулирует.",
+                "Нагрев есть, оборудование существующее."
+            ],
+            "repeatAnswers": [
+                "Да, нагреватель есть."
+            ]
+        },
+        {
+            "id": "F004",
+            "title": "Наличие воздушных заслонок",
+            "category": "actuators",
+            "tzSection": "existing_system",
+            "value": true,
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "general",
+            "prerequisites": [],
+            "questions": [
+                "Заслонки на вентиляции есть?",
+                "Воздушные заслонки установлены?",
+                "На притоке заслонки есть сейчас?"
+            ],
+            "answers": [
+                "Да, заслонки есть.",
+                "Есть, они уже стоят в системе.",
+                "Да, воздушные заслонки существующие."
+            ],
+            "repeatAnswers": [
+                "Да, есть."
+            ]
+        },
+        {
+            "id": "F005",
+            "title": "Текущее местное управление",
+            "category": "current_system",
+            "tzSection": "existing_system",
+            "value": "каждый элемент можно отдельно включать и выключать местными кнопками",
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [],
+            "questions": [
+                "Как сейчас включают вентиляторы и нагрев?",
+                "Есть местные кнопки на оборудование?",
+                "Оператор может отдельно включать элементы?"
+            ],
+            "answers": [
+                "Да, сейчас оператор отдельно включает и выключает элементы кнопками.",
+                "Местные кнопки есть, всё запускают вручную.",
+                "Да, вентиляторы и нагрев можно отдельно включать и отключать на месте."
+            ],
+            "repeatAnswers": [
+                "Да, отдельные кнопки уже есть."
+            ]
+        },
+        {
+            "id": "F006",
+            "title": "Ступени мощности нагревателя",
+            "category": "actuators",
+            "tzSection": "existing_system",
+            "value": {
+                "stages": [
+                    0,
+                    25,
+                    50,
+                    75,
+                    100
+                ],
+                "unit": "%"
+            },
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [
+                "F003"
+            ],
+            "questions": [
+                "Как регулируется мощность нагревателя?",
+                "Нагрев плавный или ступенями?",
+                "Какие ступени нагрева сейчас есть?"
+            ],
+            "answers": [
+                "Ступенями: 0, 25, 50, 75 и 100 %.",
+                "Не плавно. Можно выбрать 0, 25, 50, 75 или 100 %.",
+                "Пять положений по мощности: 0, 25, 50, 75 и 100 %."
+            ],
+            "repeatAnswers": [
+                "0, 25, 50, 75 и 100 %."
+            ]
+        },
+        {
+            "id": "F007",
+            "title": "Текущая индикация",
+            "category": "current_system",
+            "tzSection": "existing_system",
+            "value": "есть индикация включения вентиляторов и нагревателя",
+            "customerConfidence": "known",
+            "requirementType": "preference",
+            "disclosureLevel": "specific",
+            "prerequisites": [],
+            "questions": [
+                "Что оператор сейчас видит по состоянию системы?",
+                "Какая индикация уже есть?",
+                "Видно хотя бы что включено?"
+            ],
+            "answers": [
+                "Сейчас видно только, включены вентиляторы и нагрев или нет.",
+                "Есть простая индикация работы вентиляторов и нагревателя.",
+                "По сути только лампы состояния: вентиляторы и нагрев."
+            ],
+            "repeatAnswers": [
+                "Только состояние вентиляторов и нагрева."
+            ]
+        },
+        {
+            "id": "F008",
+            "title": "Отсутствие датчиков температуры",
+            "category": "current_system",
+            "tzSection": "measurement_requirements",
+            "value": "датчиков температуры в существующей системе нет",
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [],
+            "questions": [
+                "Датчики температуры уже стоят?",
+                "Температуру сейчас чем-то измеряете?",
+                "Есть датчик температуры в системе?"
+            ],
+            "answers": [
+                "Нет, датчиков температуры сейчас вообще нет.",
+                "Нет, температура автоматически не измеряется.",
+                "Датчика температуры в существующей системе нет."
+            ],
+            "repeatAnswers": [
+                "Нет, датчиков нет."
+            ]
+        },
+        {
+            "id": "F009",
+            "title": "Проблема холодного цеха утром",
+            "category": "automation_goal",
+            "tzSection": "system_purpose",
+            "value": "к началу смены цех не успевает прогреться",
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "general",
+            "prerequisites": [],
+            "questions": [
+                "Что сейчас больше всего не устраивает?",
+                "Почему решили автоматизировать?",
+                "Какая главная проблема утром?"
+            ],
+            "answers": [
+                "С утра в цехе холодно, потом приходится ждать, пока всё прогреется.",
+                "Главная проблема — к началу смены холодно.",
+                "Утром люди приходят, а цех ещё не прогрет."
+            ],
+            "repeatAnswers": [
+                "Да, утром холодно."
+            ]
+        },
+        {
+            "id": "F010",
+            "title": "Человеческий фактор при ручном регулировании",
+            "category": "automation_goal",
+            "tzSection": "system_purpose",
+            "value": "оператор иногда забывает изменить мощность нагревателя",
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "general",
+            "prerequisites": [],
+            "questions": [
+                "Кроме холода утром что мешает?",
+                "С ручной регулировкой проблемы бывают?",
+                "Оператор всегда вовремя меняет нагрев?"
+            ],
+            "answers": [
+                "Бывает, что оператор просто забывает поменять мощность нагревателя.",
+                "Ручное управление неудобно — можно забыть изменить нагрев.",
+                "Да, человеческий фактор есть: ступень нагрева не всегда меняют вовремя."
+            ],
+            "repeatAnswers": [
+                "Иногда забывают поменять нагрев."
+            ]
+        },
+        {
+            "id": "F011",
+            "title": "Основная цель автоматизации",
+            "category": "automation_goal",
+            "tzSection": "system_purpose",
+            "value": "автоматически поддерживать требуемую температуру и управлять вентиляцией",
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "general",
+            "prerequisites": [],
+            "questions": [
+                "Что в итоге должна делать новая система?",
+                "Какой результат хотите от автоматизации?",
+                "Главная функция системы какая?"
+            ],
+            "answers": [
+                "Чтобы вентиляция сама работала по температуре и не требовала постоянного подхода оператора.",
+                "Нужно автоматическое поддержание температуры и управление вентиляцией.",
+                "Хотим, чтобы система сама управляла вентиляцией и нагревом по температуре."
+            ],
+            "repeatAnswers": [
+                "Автоматическое управление по температуре."
+            ]
+        },
+        {
+            "id": "F012",
+            "title": "Охлаждение не требуется",
+            "category": "automation_goal",
+            "tzSection": "functional_requirements",
+            "value": false,
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [],
+            "questions": [
+                "Летом нужно автоматическое охлаждение?",
+                "Охладитель в проект нужен?",
+                "Нужно предусматривать холод?"
+            ],
+            "answers": [
+                "Нет, охладитель не нужен, у нас север.",
+                "Нет, делаем только вентиляцию и нагрев.",
+                "Охлаждение не требуется, летом это не проблема."
+            ],
+            "repeatAnswers": [
+                "Нет, охлаждение не нужно."
+            ]
+        },
+        {
+            "id": "F013",
+            "title": "Рабочая уставка температуры",
+            "category": "temperature_requirements",
+            "tzSection": "measurement_requirements",
+            "value": {
+                "value": 22,
+                "unit": "°C"
+            },
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [],
+            "questions": [
+                "Какую температуру держать в работе?",
+                "Какая основная уставка по температуре?",
+                "Сколько градусов должно быть нормально?"
+            ],
+            "answers": [
+                "Основная уставка 22 °C.",
+                "Давайте держать 22 °C.",
+                "Нормально будет 22 °C как рабочая уставка."
+            ],
+            "repeatAnswers": [
+                "22 °C."
+            ]
+        },
+        {
+            "id": "F014",
+            "title": "Нормальный диапазон температуры",
+            "category": "temperature_requirements",
+            "tzSection": "functional_requirements",
+            "value": {
+                "min": 20,
+                "max": 24,
+                "unit": "°C"
+            },
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [
+                "F013"
+            ],
+            "questions": [
+                "Какой диапазон считать нормальным?",
+                "Допустимая температура без предупреждений какая?",
+                "В каких пределах температура нормальная?"
+            ],
+            "answers": [
+                "Нормально, если держится от 20 до 24 °C.",
+                "Рабочий диапазон 20–24 °C.",
+                "Без предупреждений считаем 20–24 °C."
+            ],
+            "repeatAnswers": [
+                "20–24 °C."
+            ]
+        },
+        {
+            "id": "F015",
+            "title": "Предупреждение по низкой температуре",
+            "category": "temperature_requirements",
+            "tzSection": "alarms_and_safety",
+            "value": {
+                "threshold": 18,
+                "condition": "ниже",
+                "unit": "°C"
+            },
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [
+                "F014"
+            ],
+            "questions": [
+                "Когда давать предупреждение по холоду?",
+                "Низкая температура для предупреждения какая?",
+                "При скольки градусах уже предупредить оператора?"
+            ],
+            "answers": [
+                "Предупреждение, если температура ниже 18 °C.",
+                "Ниже 18 °C уже показывайте предупреждение.",
+                "Порог предупреждения по холоду — 18 °C, срабатывает ниже него."
+            ],
+            "repeatAnswers": [
+                "Ниже 18 °C."
+            ]
+        },
+        {
+            "id": "F016",
+            "title": "Предупреждение по высокой температуре",
+            "category": "temperature_requirements",
+            "tzSection": "alarms_and_safety",
+            "value": {
+                "threshold": 27,
+                "condition": "выше",
+                "unit": "°C"
+            },
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [
+                "F014"
+            ],
+            "questions": [
+                "А предупреждение по высокой температуре?",
+                "Когда считать что уже жарко, но ещё не авария?",
+                "Верхний порог предупреждения какой?"
+            ],
+            "answers": [
+                "Предупреждение, если выше 27 °C.",
+                "Выше 27 °C уже нужно предупредить.",
+                "Верхнее предупреждение — при температуре выше 27 °C."
+            ],
+            "repeatAnswers": [
+                "Выше 27 °C."
+            ]
+        },
+        {
+            "id": "F017",
+            "title": "Авария по низкой температуре",
+            "category": "temperature_requirements",
+            "tzSection": "alarms_and_safety",
+            "value": {
+                "threshold": 15,
+                "condition": "ниже",
+                "unit": "°C"
+            },
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [
+                "F015"
+            ],
+            "questions": [
+                "Нижняя аварийная температура какая?",
+                "Когда по холоду уже авария?",
+                "При какой температуре считать аварию снизу?"
+            ],
+            "answers": [
+                "Авария, если температура ниже 15 °C.",
+                "Ниже 15 °C уже аварийный режим.",
+                "Нижний аварийный порог — 15 °C, срабатывает ниже."
+            ],
+            "repeatAnswers": [
+                "Ниже 15 °C."
+            ]
+        },
+        {
+            "id": "F018",
+            "title": "Авария по высокой температуре",
+            "category": "temperature_requirements",
+            "tzSection": "alarms_and_safety",
+            "value": {
+                "threshold": 30,
+                "condition": "выше",
+                "unit": "°C"
+            },
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [
+                "F016"
+            ],
+            "questions": [
+                "Верхняя аварийная температура какая?",
+                "При скольки градусах сверху уже авария?",
+                "Какой порог аварии по перегреву?"
+            ],
+            "answers": [
+                "Авария, если температура выше 30 °C.",
+                "Выше 30 °C считаем перегрев аварией.",
+                "Верхний аварийный порог — 30 °C."
+            ],
+            "repeatAnswers": [
+                "Выше 30 °C."
+            ]
+        },
+        {
+            "id": "F019",
+            "title": "Время рабочей смены",
+            "category": "schedule",
+            "tzSection": "operating_modes",
+            "value": {
+                "start": "07:00",
+                "end": "18:00"
+            },
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [],
+            "questions": [
+                "Во сколько начинается и заканчивается смена?",
+                "График цеха какой?",
+                "С какого до какого времени работает смена?"
+            ],
+            "answers": [
+                "Смена с 07:00 до 18:00.",
+                "Работаем с семи утра до шести вечера.",
+                "Основная смена 07:00–18:00."
+            ],
+            "repeatAnswers": [
+                "07:00–18:00."
+            ]
+        },
+        {
+            "id": "F020",
+            "title": "Предварительный запуск",
+            "category": "schedule",
+            "tzSection": "control_algorithms",
+            "value": {
+                "leadTimeMin": 30,
+                "leadTimeMax": 40,
+                "unit": "min",
+                "timeWindow": "06:20–06:30"
+            },
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [
+                "F019"
+            ],
+            "questions": [
+                "Когда запускать вентиляцию до смены?",
+                "За сколько минут до 07:00 нужен прогрев?",
+                "Предварительный пуск за сколько делать?"
+            ],
+            "answers": [
+                "За 30–40 минут до смены, то есть примерно в 06:20–06:30.",
+                "Нужно запускать заранее, минут за 30–40 до 07:00.",
+                "Давайте предварительный запуск за 30–40 минут, ориентир 06:20–06:30."
+            ],
+            "repeatAnswers": [
+                "За 30–40 минут до 07:00."
+            ]
+        },
+        {
+            "id": "F021",
+            "title": "Автозапуск в выходные",
+            "category": "schedule",
+            "tzSection": "operating_modes",
+            "value": false,
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [
+                "F020"
+            ],
+            "questions": [
+                "В выходные запускать по расписанию?",
+                "Автозапуск нужен по субботам и воскресеньям?",
+                "В выходной день система сама стартует?"
+            ],
+            "answers": [
+                "Нет, в выходные автоматического запуска не надо.",
+                "По выходным сама запускаться не должна.",
+                "Нет, автозапуск только в рабочие дни."
+            ],
+            "repeatAnswers": [
+                "Нет, в выходные не запускаем автоматически."
+            ]
+        },
+        {
+            "id": "F022",
+            "title": "Первый шаг автоматического запуска",
+            "category": "startup_shutdown",
+            "tzSection": "control_algorithms",
+            "value": "сначала открыть воздушные заслонки",
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "followup",
+            "prerequisites": [
+                "F004"
+            ],
+            "questions": [
+                "С чего должен начинаться автоматический пуск?",
+                "Что первое делаем при запуске?",
+                "Перед вентиляторами что должно произойти?"
+            ],
+            "answers": [
+                "Сначала открыть заслонки.",
+                "Первым делом пусть открываются воздушные заслонки.",
+                "Пуск начинаем с открытия заслонок."
+            ],
+            "repeatAnswers": [
+                "Сначала заслонки."
+            ]
+        },
+        {
+            "id": "F023",
+            "title": "Подтверждение открытия заслонок",
+            "category": "startup_shutdown",
+            "tzSection": "control_algorithms",
+            "value": "использовать существующие концевые выключатели заслонок",
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "followup",
+            "prerequisites": [
+                "F022"
+            ],
+            "questions": [
+                "Как понять, что заслонки реально открылись?",
+                "Есть подтверждение положения заслонок?",
+                "Чем проверять открытие заслонки?"
+            ],
+            "answers": [
+                "У заслонок есть концевики, по ним и можно подтвердить открытие.",
+                "Концевые выключатели уже есть.",
+                "Положение заслонок подтверждается существующими концевиками."
+            ],
+            "repeatAnswers": [
+                "По концевикам."
+            ]
+        },
+        {
+            "id": "F024",
+            "title": "Тайм-аут открытия заслонки",
+            "category": "startup_shutdown",
+            "tzSection": "alarms_and_safety",
+            "value": {
+                "value": 10,
+                "unit": "s"
+            },
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "followup",
+            "prerequisites": [
+                "F023"
+            ],
+            "questions": [
+                "Сколько ждать подтверждение открытия заслонки?",
+                "Таймаут заслонки какой поставить?",
+                "Если концевик не пришёл, через сколько секунд авария?"
+            ],
+            "answers": [
+                "Ждать 10 секунд, потом считать, что заслонка не открылась.",
+                "Тайм-аут 10 секунд.",
+                "Если за 10 секунд подтверждения нет, дальше не запускать."
+            ],
+            "repeatAnswers": [
+                "10 секунд."
+            ]
+        },
+        {
+            "id": "F025",
+            "title": "Запуск вентиляторов после заслонок",
+            "category": "startup_shutdown",
+            "tzSection": "control_algorithms",
+            "value": "после подтверждения открытия заслонок запустить приточный и вытяжной вентиляторы",
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "followup",
+            "prerequisites": [
+                "F023"
+            ],
+            "questions": [
+                "Когда запускать вентиляторы?",
+                "Вентиляторы можно пускать сразу?",
+                "После заслонок что дальше?"
+            ],
+            "answers": [
+                "После подтверждения заслонок запускаем приточный и вытяжной вентиляторы.",
+                "Нет, сначала заслонки, потом оба вентилятора.",
+                "Как только открытие заслонок подтверждено, запускаем вентиляторы."
+            ],
+            "repeatAnswers": [
+                "После подтверждения заслонок."
+            ]
+        },
+        {
+            "id": "F026",
+            "title": "Подтверждение работы вентиляторов перед нагревом",
+            "category": "startup_shutdown",
+            "tzSection": "control_algorithms",
+            "value": "нагрев разрешать только после подтверждения работы вентиляции",
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "followup",
+            "prerequisites": [
+                "F025"
+            ],
+            "questions": [
+                "Нагрев можно включать сразу с вентиляторами?",
+                "Нужно ждать подтверждение работы вентиляторов?",
+                "Когда разрешать нагреватель?"
+            ],
+            "answers": [
+                "Да, сначала нужно убедиться, что вентиляция работает, и только потом включать нагрев.",
+                "Нагрев разрешать только после подтверждения вентиляторов.",
+                "Пока работа вентиляции не подтверждена, нагреватель включать нельзя."
+            ],
+            "repeatAnswers": [
+                "Сначала подтверждаем вентиляцию, потом нагрев."
+            ]
+        },
+        {
+            "id": "F027",
+            "title": "Блокировка нагревателя без вентиляции",
+            "category": "alarms_interlocks",
+            "tzSection": "alarms_and_safety",
+            "value": "нагреватель заблокирован при отсутствии подтверждённой работы вентиляции",
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "followup",
+            "prerequisites": [
+                "F026"
+            ],
+            "questions": [
+                "Если вентиляция не работает, нагрев что делает?",
+                "Можно ли оставить нагрев без вентиляторов?",
+                "Нужна блокировка нагрева по вентиляции?"
+            ],
+            "answers": [
+                "Нет, без работающей вентиляции нагрев должен быть заблокирован.",
+                "Нагреватель без вентиляторов включаться не должен.",
+                "Да, обязательно блокируйте нагрев, если вентиляция не подтверждена."
+            ],
+            "repeatAnswers": [
+                "Без вентиляции нагрев запрещён."
+            ]
+        },
+        {
+            "id": "F028",
+            "title": "Реакция на высокотемпературную аварию",
+            "category": "alarms_interlocks",
+            "tzSection": "alarms_and_safety",
+            "value": {
+                "condition": "T > 30 °C",
+                "heater": "off",
+                "ventilation": "on",
+                "alarm": true
+            },
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "followup",
+            "prerequisites": [
+                "F018"
+            ],
+            "questions": [
+                "Что делать если температура выше 30 °C?",
+                "При перегреве какая реакция?",
+                "Если верхняя авария сработала, что отключаем?"
+            ],
+            "answers": [
+                "Выше 30 °C нагрев отключить, вентиляцию оставить и выдать аварию.",
+                "При перегреве нагреватель сразу выключаем, вентиляторы продолжают работать, оператору авария.",
+                "Если больше 30 °C: без нагрева, вентиляция работает, авария на экран."
+            ],
+            "repeatAnswers": [
+                "Нагрев выключить, вентиляцию оставить, авария."
+            ]
+        },
+        {
+            "id": "F029",
+            "title": "Реакция на низкотемпературную аварию",
+            "category": "alarms_interlocks",
+            "tzSection": "alarms_and_safety",
+            "value": {
+                "condition": "T < 15 °C",
+                "heater": "100 %",
+                "ventilation": "on",
+                "alarm": true
+            },
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "followup",
+            "prerequisites": [
+                "F017"
+            ],
+            "questions": [
+                "Что делать если температура ниже 15 °C?",
+                "При сильном холоде какая реакция?",
+                "Если нижняя авария, нагрев на сколько?"
+            ],
+            "answers": [
+                "Ниже 15 °C поставить нагрев на 100 %, вентиляцию оставить включённой и выдать аварию.",
+                "При такой температуре нагрев на максимум, вентиляторы работают, оператору авария.",
+                "Если меньше 15 °C — 100 % нагрева, вентиляция не останавливается, авария."
+            ],
+            "repeatAnswers": [
+                "100 % нагрева, вентиляция работает, авария."
+            ]
+        },
+        {
+            "id": "F030",
+            "title": "Реакция на отказ вентилятора",
+            "category": "alarms_interlocks",
+            "tzSection": "alarms_and_safety",
+            "value": "при отказе приточного или вытяжного вентилятора отключить нагреватель и сформировать аварию",
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [
+                "F003"
+            ],
+            "questions": [
+                "Если один вентилятор отказал, что делать?",
+                "Что при аварии приточного или вытяжного?",
+                "Нагрев при отказе вентилятора оставляем?"
+            ],
+            "answers": [
+                "Нет, при отказе любого вентилятора нагрев отключить и выдать аварию.",
+                "Если приточный или вытяжной не работает, нагреватель сразу выключаем, оператору авария.",
+                "Отказ вентилятора — нагрев снять, сформировать аварийное сообщение."
+            ],
+            "repeatAnswers": [
+                "Нагрев отключить и дать аварию."
+            ]
+        },
+        {
+            "id": "F031",
+            "title": "Перезапуск после аварии",
+            "category": "alarms_interlocks",
+            "tzSection": "alarms_and_safety",
+            "value": "только после подтверждения оператором",
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [],
+            "questions": [
+                "После аварии система сама перезапускается?",
+                "Как восстанавливать работу после аварии?",
+                "Автоперезапуск после аварии нужен?"
+            ],
+            "answers": [
+                "Нет, после аварии повторный пуск только после подтверждения оператором.",
+                "Автоматически после аварии не перезапускать, оператор должен подтвердить.",
+                "Нужна квитанция оператора, потом уже повторный запуск."
+            ],
+            "repeatAnswers": [
+                "Только после подтверждения оператором."
+            ]
+        },
+        {
+            "id": "F032",
+            "title": "Отключение нагрева в конце смены",
+            "category": "startup_shutdown",
+            "tzSection": "control_algorithms",
+            "value": {
+                "time": "18:00",
+                "action": "heater_off"
+            },
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "followup",
+            "prerequisites": [
+                "F019"
+            ],
+            "questions": [
+                "Что делать в 18:00 по окончании смены?",
+                "Как начинается штатный останов вечером?",
+                "В конце смены нагрев сразу выключать?"
+            ],
+            "answers": [
+                "В 18:00 сначала отключить нагреватель.",
+                "Да, окончание смены начинаем с отключения нагрева в 18:00.",
+                "В шесть вечера нагрев снимаем первым."
+            ],
+            "repeatAnswers": [
+                "В 18:00 нагрев выключить."
+            ]
+        },
+        {
+            "id": "F033",
+            "title": "Продувка после отключения нагрева",
+            "category": "startup_shutdown",
+            "tzSection": "control_algorithms",
+            "value": {
+                "duration": 5,
+                "unit": "min"
+            },
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "followup",
+            "prerequisites": [
+                "F032"
+            ],
+            "questions": [
+                "После отключения нагрева вентиляторы сразу остановить?",
+                "Нужна продувка после нагревателя?",
+                "Сколько ещё гонять воздух после выключения нагрева?"
+            ],
+            "answers": [
+                "Нет, вентиляцию оставить ещё на 5 минут.",
+                "После нагрева нужна продувка 5 минут.",
+                "Пусть вентиляторы поработают ещё 5 минут."
+            ],
+            "repeatAnswers": [
+                "Ещё 5 минут вентиляции."
+            ]
+        },
+        {
+            "id": "F034",
+            "title": "Завершение штатного останова",
+            "category": "startup_shutdown",
+            "tzSection": "control_algorithms",
+            "value": "после 5 минут продувки остановить вентиляторы и закрыть заслонки",
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "followup",
+            "prerequisites": [
+                "F033"
+            ],
+            "questions": [
+                "Что после пяти минут продувки?",
+                "Как полностью завершить останов?",
+                "После продувки заслонки закрываем?"
+            ],
+            "answers": [
+                "После 5 минут остановить вентиляторы и закрыть заслонки.",
+                "Да, продувка закончилась — вентиляторы стоп, заслонки закрыть.",
+                "Дальше выключаем оба вентилятора и закрываем воздушные заслонки."
+            ],
+            "repeatAnswers": [
+                "Вентиляторы остановить, заслонки закрыть."
+            ]
+        },
+        {
+            "id": "F035",
+            "title": "Основные режимы работы",
+            "category": "modes",
+            "tzSection": "operating_modes",
+            "value": [
+                "automatic",
+                "manual"
+            ],
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [],
+            "questions": [
+                "Какие режимы нужны?",
+                "Автомат и ручной режим оставляем?",
+                "Система должна уметь работать вручную?"
+            ],
+            "answers": [
+                "Нужны автоматический и ручной режимы.",
+                "Да, автоматический плюс ручной обязательно.",
+                "Два основных режима: автомат и ручное управление."
+            ],
+            "repeatAnswers": [
+                "Автоматический и ручной."
+            ]
+        },
+        {
+            "id": "F036",
+            "title": "Ручное управление через SCADA",
+            "category": "modes",
+            "tzSection": "operator_interface",
+            "value": true,
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "followup",
+            "prerequisites": [
+                "F035"
+            ],
+            "questions": [
+                "В ручном режиме через SCADA управлять можно?",
+                "SCADA должна давать ручные команды?",
+                "С компьютера оператор сможет вручную включать оборудование?"
+            ],
+            "answers": [
+                "Да, ручное управление через SCADA нужно.",
+                "С компьютера оператор должен уметь управлять системой вручную.",
+                "Да, в ручном режиме команды можно давать через SCADA."
+            ],
+            "repeatAnswers": [
+                "Да, через SCADA."
+            ]
+        },
+        {
+            "id": "F037",
+            "title": "Сохранение местного ручного управления",
+            "category": "modes",
+            "tzSection": "functional_requirements",
+            "value": true,
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "followup",
+            "prerequisites": [
+                "F005"
+            ],
+            "questions": [
+                "Местные кнопки после модернизации оставить?",
+                "Нужно сохранить управление на месте?",
+                "Старые кнопки убирать или оставлять?"
+            ],
+            "answers": [
+                "Оставить. На месте отдельное включение и выключение должно сохраниться.",
+                "Местные кнопки нужны и после автоматизации.",
+                "Да, существующее ручное управление на месте сохраняем."
+            ],
+            "repeatAnswers": [
+                "Оставить местные кнопки."
+            ]
+        },
+        {
+            "id": "F038",
+            "title": "Количество рабочих мест SCADA",
+            "category": "operator_scada",
+            "tzSection": "operator_interface",
+            "value": {
+                "workstations": 1,
+                "operators": 1
+            },
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [],
+            "questions": [
+                "Сколько компьютеров со SCADA нужно?",
+                "SCADA на одном рабочем месте или нескольких?",
+                "Сколько операторов будут работать в системе?"
+            ],
+            "answers": [
+                "Один компьютер, один оператор.",
+                "SCADA будет только на одном рабочем месте.",
+                "Нужен один компьютер для одного человека."
+            ],
+            "repeatAnswers": [
+                "Один компьютер, один оператор."
+            ]
+        },
+        {
+            "id": "F039",
+            "title": "Отображение температуры и уставки в SCADA",
+            "category": "operator_scada",
+            "tzSection": "operator_interface",
+            "value": [
+                "current_temperature",
+                "temperature_setpoint"
+            ],
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [],
+            "questions": [
+                "Что по температуре выводить на экран?",
+                "Оператор должен видеть текущую температуру и уставку?",
+                "Какие температурные данные нужны в SCADA?"
+            ],
+            "answers": [
+                "Да, показывать текущую температуру и заданную уставку.",
+                "На экране нужна фактическая температура и то, сколько задано.",
+                "Температуру и уставку обязательно вывести."
+            ],
+            "repeatAnswers": [
+                "Текущую температуру и уставку."
+            ]
+        },
+        {
+            "id": "F040",
+            "title": "Отображение состояний оборудования и событий в SCADA",
+            "category": "operator_scada",
+            "tzSection": "operator_interface",
+            "value": [
+                "fan_states",
+                "damper_positions",
+                "heater_state",
+                "operating_mode",
+                "warnings",
+                "alarms"
+            ],
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [],
+            "questions": [
+                "Что ещё должно быть видно в SCADA?",
+                "Какие состояния оборудования выводить?",
+                "На экране нужны аварии и режимы?"
+            ],
+            "answers": [
+                "Нужны состояния вентиляторов, заслонок и нагрева, режим работы, предупреждения и аварии.",
+                "Показывайте вентиляторы, положение заслонок, нагреватель, текущий режим и все предупреждения с авариями.",
+                "На одном экране хочу видеть основное оборудование, режим и сообщения по предупреждениям и авариям."
+            ],
+            "repeatAnswers": [
+                "Состояния оборудования, режим, предупреждения и аварии."
+            ]
+        },
+        {
+            "id": "F041",
+            "title": "Диапазон изменения уставки оператором",
+            "category": "operator_scada",
+            "tzSection": "operator_interface",
+            "value": {
+                "min": 18,
+                "max": 25,
+                "unit": "°C"
+            },
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [
+                "F013"
+            ],
+            "questions": [
+                "В каких пределах оператор может менять уставку?",
+                "Диапазон задания температуры какой разрешить?",
+                "Сколько минимум и максимум можно поставить в SCADA?"
+            ],
+            "answers": [
+                "Разрешить менять от 18 до 25 °C.",
+                "Уставку оператору дайте в пределах 18–25 °C.",
+                "Ниже 18 и выше 25 °C оператору ставить не надо."
+            ],
+            "repeatAnswers": [
+                "18–25 °C."
+            ]
+        },
+        {
+            "id": "F042",
+            "title": "Команды оператора в SCADA",
+            "category": "operator_scada",
+            "tzSection": "operator_interface",
+            "value": [
+                "изменение времени автозапуска",
+                "выбор автоматического или ручного режима",
+                "выбор ступени нагрева 0/25/50/75/100 % в ручном режиме",
+                "квитирование аварий"
+            ],
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [
+                "F036"
+            ],
+            "questions": [
+                "Что оператор должен уметь менять с компьютера?",
+                "Какие команды дать оператору в SCADA?",
+                "Кроме уставки что можно менять?"
+            ],
+            "answers": [
+                "Пусть меняет время автозапуска и режим работы. В ручном режиме — ступень нагрева 0, 25, 50, 75 или 100 %, плюс квитирование аварий.",
+                "Нужно менять расписание запуска, автомат или ручной и ручную ступень нагрева. Аварии оператор должен подтверждать.",
+                "С компьютера нужны время пуска, выбор режима, ступень нагрева в ручном режиме и подтверждение аварий."
+            ],
+            "repeatAnswers": [
+                "Время пуска, режим, ступень нагрева и квитирование."
+            ]
+        },
+        {
+            "id": "F043",
+            "title": "Архив температуры",
+            "category": "operator_scada",
+            "tzSection": "operator_interface",
+            "value": true,
+            "customerConfidence": "known",
+            "requirementType": "preference",
+            "disclosureLevel": "specific",
+            "prerequisites": [],
+            "questions": [
+                "Температуру в архив писать?",
+                "Нужен график истории температуры?",
+                "Хранить историю температуры будем?"
+            ],
+            "answers": [
+                "Да, температуру нужно архивировать.",
+                "Да, история температуры пригодится.",
+                "Пишите температуру в архив, чтобы потом можно было посмотреть."
+            ],
+            "repeatAnswers": [
+                "Да, температуру архивировать."
+            ]
+        },
+        {
+            "id": "F044",
+            "title": "Журнал аварий и действий оператора",
+            "category": "operator_scada",
+            "tzSection": "operator_interface",
+            "value": [
+                "alarms",
+                "operator_actions"
+            ],
+            "customerConfidence": "known",
+            "requirementType": "preference",
+            "disclosureLevel": "specific",
+            "prerequisites": [],
+            "questions": [
+                "Журнал аварий нужен?",
+                "Действия оператора тоже сохранять?",
+                "Что кроме температуры хранить в журнале?"
+            ],
+            "answers": [
+                "Да, хранить аварии и действия оператора.",
+                "Нужен журнал аварий и того, что оператор менял или подтверждал.",
+                "Сохраняйте аварийные события и действия оператора."
+            ],
+            "repeatAnswers": [
+                "Аварии и действия оператора."
+            ]
+        },
+        {
+            "id": "F045",
+            "title": "Срок хранения архива",
+            "category": "unknowns_design",
+            "tzSection": "design_and_acceptance",
+            "value": null,
+            "customerConfidence": "unknown",
+            "requirementType": "proposal",
+            "unknownKind": "undefined",
+            "disclosureLevel": "specific",
+            "prerequisites": [
+                "F043",
+                "F044"
+            ],
+            "questions": [
+                "Сколько хранить архив?",
+                "Срок хранения истории какой нужен?",
+                "Архив за месяц, год или сколько?"
+            ],
+            "answers": [
+                "Не знаю, мы срок хранения не определяли. Предложите и согласуем.",
+                "Вот это не задавали, решите как разумно и потом покажите.",
+                "Не могу сказать, требования по сроку архива у нас нет."
+            ],
+            "repeatAnswers": [
+                "Не определяли, предложите вариант."
+            ]
+        },
+        {
+            "id": "F046",
+            "title": "Место измерения температуры",
+            "category": "temperature_requirements",
+            "tzSection": "measurement_requirements",
+            "value": "приточный воздуховод",
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [],
+            "questions": [
+                "Где ставить измерение температуры?",
+                "Температуру откуда брать для системы?",
+                "Датчик температуры где хотите видеть?"
+            ],
+            "answers": [
+                "В приточном воздуховоде.",
+                "Температуру измеряем в приточном воздуховоде.",
+                "Ставьте измерение в приточном канале."
+            ],
+            "repeatAnswers": [
+                "В приточном воздуховоде."
+            ]
+        },
+        {
+            "id": "F047",
+            "title": "Наличие готовых сигналов состояния вентиляторов",
+            "category": "unknowns_design",
+            "tzSection": "design_and_acceptance",
+            "value": null,
+            "customerConfidence": "unknown",
+            "requirementType": "proposal",
+            "unknownKind": "survey",
+            "disclosureLevel": "specific",
+            "prerequisites": [
+                "F002"
+            ],
+            "questions": [
+                "У вентиляторов есть сигналы Работа и Авария?",
+                "Можно снять подтверждение работы с вентиляторов?",
+                "Какие дискретные сигналы есть у вентиляторов сейчас?"
+            ],
+            "answers": [
+                "Не знаю, это надо смотреть на месте.",
+                "Не подскажу, по вентиляторам надо обследование.",
+                "Не знаю, есть ли там готовые контакты. Проверьте оборудование."
+            ],
+            "repeatAnswers": [
+                "Не знаю, надо обследовать."
+            ]
+        },
+        {
+            "id": "F048",
+            "title": "Модель контроллера",
+            "category": "unknowns_design",
+            "tzSection": "design_and_acceptance",
+            "value": null,
+            "customerConfidence": "unknown",
+            "requirementType": "proposal",
+            "unknownKind": "designer",
+            "disclosureLevel": "specific",
+            "prerequisites": [],
+            "questions": [
+                "Какой контроллер хотите?",
+                "ПЛК уже выбран?",
+                "Есть требование по марке контроллера?"
+            ],
+            "answers": [
+                "Нет, контроллера сейчас нет, выбирайте сами.",
+                "Марку не задавали, это решение проектировщика.",
+                "Не знаю, какой ПЛК нужен. Предложите подходящий."
+            ],
+            "repeatAnswers": [
+                "Контроллер выбирайте вы."
+            ]
+        },
+        {
+            "id": "F049",
+            "title": "Платформа SCADA",
+            "category": "unknowns_design",
+            "tzSection": "design_and_acceptance",
+            "value": null,
+            "customerConfidence": "unknown",
+            "requirementType": "proposal",
+            "unknownKind": "designer",
+            "disclosureLevel": "specific",
+            "prerequisites": [],
+            "questions": [
+                "Какая SCADA должна быть?",
+                "По SCADA есть конкретная программа?",
+                "Какую SCADA используем?"
+            ],
+            "answers": [
+                "Не знаю, SCADA сейчас вообще нет. Предложите.",
+                "Конкретную программу не выбирали, это к проектировщику.",
+                "Требования по марке SCADA нет, главное чтобы задачи выполняла."
+            ],
+            "repeatAnswers": [
+                "SCADA не выбрана."
+            ]
+        },
+        {
+            "id": "F050",
+            "title": "Тип и модель датчика температуры",
+            "category": "unknowns_design",
+            "tzSection": "design_and_acceptance",
+            "value": null,
+            "customerConfidence": "unknown",
+            "requirementType": "proposal",
+            "unknownKind": "designer",
+            "disclosureLevel": "specific",
+            "prerequisites": [
+                "F046"
+            ],
+            "questions": [
+                "Какой датчик температуры ставить?",
+                "Тип датчика уже определён?",
+                "Pt100, термопара или что-то другое хотите?"
+            ],
+            "answers": [
+                "Не знаю, подберите подходящий датчик сами.",
+                "Тип датчика не определяли, это ваше проектное решение.",
+                "Не подскажу, какой именно датчик нужен. Главное, чтобы работал в наших условиях."
+            ],
+            "repeatAnswers": [
+                "Датчик подберите вы."
+            ]
+        },
+        {
+            "id": "F051",
+            "title": "Мощность и электрические данные существующего нагревателя",
+            "category": "unknowns_design",
+            "tzSection": "design_and_acceptance",
+            "value": null,
+            "customerConfidence": "unknown",
+            "requirementType": "proposal",
+            "unknownKind": "survey",
+            "disclosureLevel": "specific",
+            "prerequisites": [
+                "F003"
+            ],
+            "questions": [
+                "Какая мощность у нагревателя?",
+                "Шильдик нагревателя можете дать?",
+                "Сколько киловатт существующий нагреватель?"
+            ],
+            "answers": [
+                "Сейчас не скажу, надо смотреть шильдик на месте.",
+                "Не знаю точную мощность, это нужно снять при обследовании.",
+                "По киловаттам не подскажу, посмотрите существующий нагреватель."
+            ],
+            "repeatAnswers": [
+                "Не знаю, надо посмотреть на месте."
+            ]
+        },
+        {
+            "id": "F052",
+            "title": "Мощность и паспортные данные существующих вентиляторов",
+            "category": "unknowns_design",
+            "tzSection": "design_and_acceptance",
+            "value": null,
+            "customerConfidence": "unknown",
+            "requirementType": "proposal",
+            "unknownKind": "survey",
+            "disclosureLevel": "specific",
+            "prerequisites": [
+                "F002"
+            ],
+            "questions": [
+                "Какая мощность двигателей вентиляторов?",
+                "Паспортные данные вентиляторов есть?",
+                "Сколько киловатт приточный и вытяжной?"
+            ],
+            "answers": [
+                "Не знаю точные данные, надо смотреть оборудование.",
+                "Паспортные мощности сейчас не назову, это обследование.",
+                "Не подскажу по киловаттам, снимите данные с вентиляторов на месте."
+            ],
+            "repeatAnswers": [
+                "Не знаю, смотрите на месте."
+            ]
+        },
+        {
+            "id": "F053",
+            "title": "Силовое питание оборудования",
+            "category": "power",
+            "tzSection": "power_supply",
+            "value": {
+                "voltage": 400,
+                "phases": 3,
+                "unit": "V AC"
+            },
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [],
+            "questions": [
+                "Какое силовое питание у оборудования?",
+                "Вентиляторы и нагрев от 400 В?",
+                "Силовая сеть трёхфазная какая?"
+            ],
+            "answers": [
+                "Да, силовая часть от 3×400 В.",
+                "Для вентиляторов и нагревателя используем трёхфазные 400 В.",
+                "Силовое питание — 3×400 В."
+            ],
+            "repeatAnswers": [
+                "3×400 В."
+            ]
+        },
+        {
+            "id": "F054",
+            "title": "Питание шкафа автоматики и цепей управления",
+            "category": "power",
+            "tzSection": "power_supply",
+            "value": {
+                "cabinetSupply": "230 V AC",
+                "controlAndSensors": "24 V DC"
+            },
+            "customerConfidence": "known",
+            "requirementType": "mandatory",
+            "disclosureLevel": "specific",
+            "prerequisites": [],
+            "questions": [
+                "Чем питать шкаф и цепи управления?",
+                "По питанию автоматики что принимаем?",
+                "230 В на шкаф и 24 В на датчики подходит?"
+            ],
+            "answers": [
+                "Да, шкаф 230 В AC, цепи управления и датчики 24 В DC.",
+                "Принимаем 230 В на шкаф и 24 В постоянного тока на автоматику.",
+                "Да, шкаф от 230 В, управление и датчики от 24 В DC."
+            ],
+            "repeatAnswers": [
+                "230 В на шкаф, 24 В DC на управление."
+            ]
+        },
+        {
+            "id": "F055",
+            "title": "Условия эксплуатации в цехе",
+            "category": "environment",
+            "tzSection": "operating_conditions",
+            "value": {
+                "dust": "сильной запылённости нет",
+                "humidity": "невысокая",
+                "winter": "очень холодно"
+            },
+            "customerConfidence": "approximate",
+            "requirementType": "mandatory",
+            "disclosureLevel": "general",
+            "prerequisites": [],
+            "questions": [
+                "Какие условия в цехе по пыли, влажности и температуре?",
+                "Среда тяжёлая: пыль, сырость, холод?",
+                "Что по условиям эксплуатации в помещении?"
+            ],
+            "answers": [
+                "Сильной пыли нет, влажность невысокая, зимой очень холодно.",
+                "Цех не пыльный и не сырой, но зимой холодно.",
+                "По пыли и влажности всё спокойно, основная особенность — холодная зима."
+            ],
+            "repeatAnswers": [
+                "Пыли мало, влажность невысокая, зимой холодно."
+            ]
+        }
+    ],
+    "validation": {
+        "factsCount": 55,
+        "studentQuestionVariantsCount": 165,
+        "customerAnswerVariantsCount": 165,
+        "unknownFactsCount": 7,
+        "unknownAnswerVariantsCount": 21,
+        "categoriesCovered": 13,
+        "tzSectionsCovered": 13
+    }
+}

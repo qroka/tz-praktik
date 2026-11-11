@@ -3,7 +3,7 @@
 // Движок не меняется: сценарий собирается из тех же структур, что и встроенный кейс.
 import type {
   Ambiguity, Category, Confidence, DisclosureLevel, FactClaim, Intent, MetaReplies, ReplyStep, RequirementType, Scenario, ScenarioFact,
-  TopicContext, UncertaintyKind, UnknownTopic, Unit,
+  TopicContext, TzSection, UncertaintyKind, UnknownTopic, Unit,
 } from '../types';
 import { createEngineState, respond } from '../engine/dialogueEngine';
 import { normalizeText, tokenize } from '../engine/normalizeText';
@@ -45,7 +45,15 @@ export type ScenarioPack = {
     estimatedMinutes?: number;
     greeting: string[];
   };
+  /** Без tzSections: стандартные 13 категорий (можно переименовать). С tzSections: ваш полный список категорий. */
   categories?: { id: string; title?: string; direction?: string }[];
+  /**
+   * Свои разделы ТЗ (в порядке следования). Если указаны, сценарий использует свои категории и разделы,
+   * а section у сведения — номер раздела в этом списке (с 1).
+   */
+  tzSections?: { id?: string | number; title: string; hint?: string }[];
+  /** Какие сведения считать порогами предупреждения и аварии (для оценки «разделение предупреждения и аварии»). */
+  evaluation?: { warnAlarmFacts?: string[] };
   facts: PackFact[];
   generalQuestions?: { questions: string[]; replies: string[]; facts?: string[] }[];
   clarifyingQuestions?: { word: string; meaning?: string; questions: string[] }[];
@@ -59,7 +67,7 @@ export type BuildReport = { errors: string[]; warnings: string[] };
 const UNIT_MAP: Record<string, Unit> = {
   '°c': 'c', '°с': 'c', c: 'c', с: 'c', градус: 'c', градусов: 'c',
   мпа: 'mpa', 'м3/ч': 'm3h', 'м³/ч': 'm3h', квт: 'kw', гц: 'hz', в: 'v', вольт: 'v',
-  сек: 's', секунд: 's', м: 'm', dn: 'dn', '%': 'percent', ip: 'ip',
+  сек: 's', секунд: 's', s: 's', sec: 's', м: 'm', dn: 'dn', '%': 'percent', ip: 'ip',
 };
 
 /** Служебные намерения берутся из встроенного кейса: приветствие, «что ещё?», «повторите» и т. п. */
@@ -71,9 +79,19 @@ const SERVICE_CONCEPTS = [
   'greet', 'thanks', 'bye', 'who', 'bot', 'tzword', 'writeit', 'weNeed', 'money', 'propose', 'more', 'precise', 'mandatoryw', 'why', 'repeatw',
 ];
 
-const CATEGORY_IDS = baseCategories.map((c) => c.id);
+const STANDARD_CATEGORY_IDS = baseCategories.map((c) => c.id);
 const clean = (list: unknown): string[] => (Array.isArray(list) ? list.filter((x): x is string => typeof x === 'string' && x.trim() !== '').map((x) => x.trim()) : []);
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** Сценарий задаёт свою структуру (категории и разделы ТЗ) или использует стандартные 13 и 13. */
+function structureOf(raw: Record<string, unknown>): { custom: boolean; categoryIds: string[]; sectionCount: number } {
+  const sections = raw.tzSections;
+  if (Array.isArray(sections) && sections.length) {
+    const categories = Array.isArray(raw.categories) ? raw.categories : [];
+    return { custom: true, categoryIds: categories.map((c) => (isObject(c) && typeof c.id === 'string' ? c.id : '')).filter(Boolean), sectionCount: sections.length };
+  }
+  return { custom: false, categoryIds: STANDARD_CATEGORY_IDS, sectionCount: tzSections.length };
+}
 
 /** Основа ключевого слова: нижний регистр, ё → е. Короткие слова сравниваются целиком. */
 function keywordEntry(word: string): string | null {
@@ -103,17 +121,25 @@ export function validatePack(raw: unknown): BuildReport {
   }
   const facts = Array.isArray(raw.facts) ? (raw.facts as PackFact[]) : [];
   if (!facts.length) errors.push('Нет списка facts.');
+  const structure = structureOf(raw);
+  if (structure.custom) {
+    if (!structure.categoryIds.length) errors.push('Указаны свои разделы ТЗ (tzSections), но нет списка categories с id.');
+    if (new Set(structure.categoryIds).size !== structure.categoryIds.length) errors.push('categories: id категорий повторяются.');
+    (raw.tzSections as unknown[]).forEach((section, index) => {
+      if (!isObject(section) || typeof section.title !== 'string' || !section.title.trim()) errors.push(`tzSections[${index}]: нужен title.`);
+    });
+  }
   const ids = new Set<string>();
   const known = new Set(facts.map((f) => f?.id));
-  const categorySet = new Set(CATEGORY_IDS);
+  const categorySet = new Set(structure.categoryIds);
   facts.forEach((fact, index) => {
     const where = `facts[${index}]${fact?.id ? ` (${fact.id})` : ''}`;
     if (!isObject(fact)) return void errors.push(`${where}: ожидается объект.`);
     if (typeof fact.id !== 'string' || !/^[a-z0-9_]+$/.test(fact.id)) errors.push(`${where}: id — латиница, цифры, подчёркивание.`);
     else if (ids.has(fact.id)) errors.push(`${where}: id повторяется.`);
     else ids.add(fact.id);
-    if (!categorySet.has(fact.category)) errors.push(`${where}: категория "${fact.category}" не из списка (${CATEGORY_IDS.join(', ')}).`);
-    if (!Number.isInteger(fact.section) || fact.section < 1 || fact.section > 13) errors.push(`${where}: section — число от 1 до 13.`);
+    if (!categorySet.has(fact.category)) errors.push(`${where}: категория "${fact.category}" не из списка (${structure.categoryIds.join(', ')}).`);
+    if (!Number.isInteger(fact.section) || fact.section < 1 || fact.section > structure.sectionCount) errors.push(`${where}: section — число от 1 до ${structure.sectionCount}.`);
     if (!fact.label || !fact.value) errors.push(`${where}: нужны label и value.`);
     if (clean(fact.questions).length < 2) errors.push(`${where}: нужно не меньше 2 формулировок вопроса (рекомендуется 3–5).`);
     if (clean(fact.replies).length < 1) errors.push(`${where}: нужен хотя бы один вариант ответа.`);
@@ -133,9 +159,9 @@ export function validatePack(raw: unknown): BuildReport {
     }
   });
   const covered = new Set(facts.map((f) => f?.category));
-  for (const id of CATEGORY_IDS) if (!covered.has(id)) warnings.push(`Категория "${id}": нет ни одного сведения.`);
+  for (const id of structure.categoryIds) if (!covered.has(id)) warnings.push(`Категория "${id}": нет ни одного сведения.`);
   const sections = new Set(facts.map((f) => f?.section));
-  for (const section of tzSections) if (!sections.has(section.id)) warnings.push(`Раздел ТЗ ${section.id}: нет ни одного сведения.`);
+  for (let id = 1; id <= structure.sectionCount; id++) if (!sections.has(id)) warnings.push(`Раздел ТЗ ${id}: нет ни одного сведения.`);
   const questions = facts.flatMap((f) => clean(f?.questions)).length;
   if (facts.length < 30) warnings.push(`Сведений ${facts.length}: для хорошего диалога нужно 45–55.`);
   if (questions < 100) warnings.push(`Формулировок вопросов ${questions}: рекомендуется не меньше 120.`);
@@ -155,20 +181,34 @@ export function validatePack(raw: unknown): BuildReport {
 
 const step = (facts: string[], variants: string[], short: string[]): ReplyStep => ({ facts, variants, short });
 
-export function buildScenarioFromPack(pack: ScenarioPack): { scenario: Scenario; report: BuildReport } {
+/** Собирает сценарий. Если в файле есть ошибки, сценарий не создаётся (null), а отчёт говорит, что исправить. Никогда не бросает исключений. */
+export function buildScenarioFromPack(pack: ScenarioPack): { scenario: Scenario | null; report: BuildReport } {
   const report = validatePack(pack);
+  if (report.errors.length) return { scenario: null, report };
   const head = pack.scenario;
   const customer = head.customer;
   const factList = (pack.facts ?? []).filter((f) => f && typeof f.id === 'string');
   const concept = (id: string) => `k_${id}`;
 
-  // Категории: направления берутся из файла, названия и порядок — стандартные.
+  // Категории и разделы ТЗ: свои (если файл их задаёт) или стандартные 13 и 13.
+  const customStructure = Array.isArray(pack.tzSections) && pack.tzSections.length > 0;
   const given = new Map((pack.categories ?? []).map((c) => [c.id, c]));
-  const categories: Category[] = baseCategories.map((c) => ({
-    id: c.id,
-    title: given.get(c.id)?.title?.trim() || c.title,
-    direction: given.get(c.id)?.direction?.trim() || c.direction,
-  }));
+  const categories: Category[] = customStructure
+    ? (pack.categories ?? []).map((c) => ({ id: c.id, title: c.title?.trim() || c.id, direction: c.direction?.trim() || `Что выяснить по теме «${c.title?.trim() || c.id}».` }))
+    : baseCategories.map((c) => ({
+        id: c.id,
+        title: given.get(c.id)?.title?.trim() || c.title,
+        direction: given.get(c.id)?.direction?.trim() || c.direction,
+      }));
+  const sections: TzSection[] = customStructure
+    ? (pack.tzSections ?? []).map((section, index) => ({
+        id: index + 1,
+        title: section.title.trim(),
+        hint: section.hint?.trim() || `Что относится к разделу «${section.title.trim()}».`,
+        // Категории реестра, которые обычно переносят в этот раздел: те, чьи сведения в нём ожидаются.
+        categories: [...new Set(factList.filter((f) => f.section === index + 1).map((f) => f.category))],
+      }))
+    : tzSections;
 
   const facts: ScenarioFact[] = factList.map((f) => {
     const unit = f.unit ? UNIT_MAP[f.unit.trim().toLowerCase()] : undefined;
@@ -199,12 +239,10 @@ export function buildScenarioFromPack(pack: ScenarioPack): { scenario: Scenario;
 
   const lexicon: Record<string, string[]> = {};
   for (const name of SERVICE_CONCEPTS) lexicon[name] = baseLexicon[name] ?? [];
-  const subjectConcepts: string[] = [];
   for (const f of factList) {
     const entries = clean(f.keywords).map(keywordEntry).filter((x): x is string => Boolean(x));
     const fallback = keywordsFromLabel(f.label).map(keywordEntry).filter((x): x is string => Boolean(x));
     lexicon[concept(f.id)] = entries.length ? entries : fallback;
-    subjectConcepts.push(concept(f.id));
   }
 
   const intents: Intent[] = [];
@@ -269,7 +307,7 @@ export function buildScenarioFromPack(pack: ScenarioPack): { scenario: Scenario;
       kind: (f.unknownKind ?? 'designer') as UncertaintyKind,
       label: f.label,
       category: f.category,
-      concepts: [[concept(f.id)]],
+      intentOnly: true,
       replies: clean(f.replies),
     }));
 
@@ -283,7 +321,10 @@ export function buildScenarioFromPack(pack: ScenarioPack): { scenario: Scenario;
     specMore: undefined,
   };
 
-  const warnAlarmFacts = factList.filter((f) => f.category === 'warning' || (f.category === 'protection' && !f.isReaction)).map((f) => f.id);
+  const known = new Set(factList.map((f) => f.id));
+  const warnAlarmFacts = pack.evaluation?.warnAlarmFacts
+    ? pack.evaluation.warnAlarmFacts.filter((id) => known.has(id))
+    : factList.filter((f) => f.category === 'warning' || (f.category === 'protection' && !f.isReaction)).map((f) => f.id);
   const glossary = (pack.glossary ?? []).filter((g) => g.term && g.text).map((g, i) => ({ id: `gloss_${i + 1}`, pattern: normalizeText(g.term).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), text: g.text }));
 
   const scenario: Scenario = {
@@ -295,18 +336,20 @@ export function buildScenarioFromPack(pack: ScenarioPack): { scenario: Scenario;
     estimatedMinutes: head.estimatedMinutes ?? 90,
     greeting: clean(head.greeting),
     categories,
-    tzSections,
+    tzSections: sections,
     facts,
     intents,
     replies,
     meta,
     lexicon,
-    subjectConcepts,
+    // Ключевые слова сведений могут повторяться у нескольких сведений: штраф «лишний предмет в вопросе» тут только мешает.
+    subjectConcepts: [],
     attributeConcepts: [],
     ambiguities,
     topics,
     unknownTopics,
     glossary,
+    disableFrames: true,
     evaluation: { warnAlarmFacts, builtInMixups: false },
   };
   return { scenario, report };

@@ -7,6 +7,7 @@ import { getStudentToken } from '../api/student';
 import { STORAGE_KEY } from '../state/storage';
 import type { Scenario } from '../types';
 import { scenario as builtIn } from './scenario';
+import { convertForeignPack } from './packConverter';
 import { buildScenarioFromPack, type ScenarioPack } from './scenarioPack';
 
 export type ScenarioSettings = { title?: string; publicBrief?: string; estimatedMinutes?: number; customerName?: string; customerAvatar?: string };
@@ -18,10 +19,11 @@ const initialsOf = (name: string): string =>
 const packs = import.meta.glob('../../scenario/scenariy.json', { eager: true, import: 'default' }) as Record<string, ScenarioPack>;
 
 function fromFile(): Scenario {
-  const pack = Object.values(packs)[0];
-  if (!pack) return builtIn;
+  const file = Object.values(packs)[0];
+  if (!file) return builtIn;
+  const pack = convertForeignPack(file)?.pack ?? file;
   const { scenario: built, report } = buildScenarioFromPack(pack);
-  if (report.errors.length) {
+  if (report.errors.length || !built) {
     console.error('scenario/scenariy.json не подключён, ошибки:\n' + report.errors.join('\n'));
     return builtIn;
   }
@@ -57,7 +59,7 @@ export function applyRemoteScenario(remote: PublicScenario): void {
     scenario = withSettings(builtIn, remote.settings);
   } else if (remote.pack) {
     const { scenario: built, report } = buildScenarioFromPack(remote.pack);
-    if (report.errors.length) throw new Error(report.errors.join('; '));
+    if (report.errors.length || !built) throw new Error(report.errors.join('; ') || 'Сценарий не собрался.');
     scenario = withSettings(built, remote.settings);
   }
 }

@@ -122,7 +122,21 @@ type StoredAttempt = {
   } | null;
 };
 
-export function attemptReportMd(row: { id: number; scenario_title: string | null; scenario_id: string; attempt_json: string }): string {
+/** Названия разделов ТЗ сценария: свои, если сценарий их задаёт, иначе стандартные 13. */
+export function sectionTitles(db: Db, scenarioId: string): Record<number, string> {
+  const row = db.prepare('SELECT pack_json FROM scenarios WHERE id = ?').get(scenarioId) as { pack_json: string | null } | undefined;
+  try {
+    const sections = row?.pack_json ? (JSON.parse(row.pack_json) as { tzSections?: { title?: unknown }[] }).tzSections : undefined;
+    if (Array.isArray(sections) && sections.length) {
+      return Object.fromEntries(sections.map((section, index) => [index + 1, typeof section?.title === 'string' ? section.title : `Раздел ${index + 1}`]));
+    }
+  } catch {
+    // Повреждённый файл сценария: остаются стандартные названия.
+  }
+  return TZ_SECTION_TITLES;
+}
+
+export function attemptReportMd(row: { id: number; scenario_title: string | null; scenario_id: string; attempt_json: string }, titles: Record<number, string> = TZ_SECTION_TITLES): string {
   const attempt = JSON.parse(row.attempt_json) as StoredAttempt;
   const lines = [
     `# Попытка №${row.id}: ${attempt.studentName ?? 'без имени'}`,
@@ -145,7 +159,7 @@ export function attemptReportMd(row: { id: number; scenario_title: string | null
   lines.push('## Реестр требований', '');
   for (const item of attempt.requirements ?? []) lines.push(`- ${item.text}${item.needsClarification ? ' (требует уточнения)' : ''}${item.conflict ? ' (противоречие)' : ''}`);
   lines.push('', '## Текст ТЗ', '');
-  for (const [number, title] of Object.entries(TZ_SECTION_TITLES)) {
+  for (const [number, title] of Object.entries(titles)) {
     lines.push(`### ${number}. ${title}`, '', attempt.tz?.[number]?.trim() || '—', '');
   }
   return lines.join('\n');

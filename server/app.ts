@@ -10,7 +10,7 @@ import { feedbackSummary, listFeedback } from './feedback.ts';
 import { registerStudentRoutes } from './studentRoutes.ts';
 import { textKey } from './students.ts';
 import { HttpError, RateLimiter, Router, parseCookies, readBody, sendBuffer, sendJson, sendText, type Ctx } from './http.ts';
-import { attemptReportMd, attemptsXlsx, scenarioReportMd } from './reports.ts';
+import { attemptReportMd, attemptsXlsx, scenarioReportMd, sectionTitles } from './reports.ts';
 import { XLSX_MIME } from './xlsx.ts';
 import { computeStats } from './stats.ts';
 
@@ -332,7 +332,7 @@ export function createApp(db: Db, config: Config): App {
       .prepare('SELECT a.id, a.scenario_id, s.title AS scenario_title, a.attempt_json FROM attempts a LEFT JOIN scenarios s ON s.id = a.scenario_id WHERE a.id = ?')
       .get(Number(ctx.params.id)) as { id: number; scenario_id: string; scenario_title: string | null; attempt_json: string } | undefined;
     if (!row) throw new HttpError(404, 'Попытка не найдена.');
-    sendText(ctx.res, 200, attemptReportMd(row), 'text/markdown; charset=utf-8', { 'Content-Disposition': `attachment; filename="attempt-${row.id}.md"` });
+    sendText(ctx.res, 200, attemptReportMd(row, sectionTitles(db, row.scenario_id)), 'text/markdown; charset=utf-8', { 'Content-Disposition': `attachment; filename="attempt-${row.id}.md"` });
     return undefined;
   });
 
