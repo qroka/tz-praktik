@@ -33,6 +33,7 @@ declare module 'vue' {
     SaveStatus: typeof import('./src/components/layout/SaveStatus.vue')['default']
     SecretCode: typeof import('./src/components/student/SecretCode.vue')['default']
     StudentAuthScreen: typeof import('./src/components/student/StudentAuthScreen.vue')['default']
+    ThemeControls: typeof import('./src/components/layout/ThemeControls.vue')['default']
     TzEditor: typeof import('./src/components/editor/TzEditor.vue')['default']
     TzLogo: typeof import('./src/components/layout/TzLogo.vue')['default']
     UAccordion: typeof import('./node_modules/@nuxt/ui/dist/runtime/components/Accordion.vue')['default']

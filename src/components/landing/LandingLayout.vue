@@ -1,36 +1,12 @@
 <script setup lang="ts">
 // Каркас стартовой страницы: шапка, блок с формой входа, описание тренажёра и кейса.
 // Форма входа (или ввод имени без сервера) передаётся в слот «auth».
-import { computed } from 'vue';
-import type { DropdownMenuItem } from '@nuxt/ui';
 import { useSession } from '../../composables/useSession';
-import { useTheme } from '../../composables/useTheme';
 import { prefersReducedMotion } from '../../composables/useLayout';
-import { themeAccent, type TzThemePreset } from '../../theme/themes';
+import ThemeControls from '../layout/ThemeControls.vue';
 import TzLogo from '../layout/TzLogo.vue';
 
 const { scenario } = useSession();
-const { isDark, toggleMode, presets, preset, selectPreset } = useTheme();
-
-// Цветовая тема: тот же список готовых тем, что в меню профиля, значок красится цветом темы.
-const chipStyle = (p: TzThemePreset) => ({ color: themeAccent(p), background: `color-mix(in oklab, ${themeAccent(p)} 20%, transparent)` });
-const presetOf = (item: unknown) => presets.find((p) => p.id === (item as { presetId?: string }).presetId) ?? presets[0]!;
-const keep = (event: Event) => event.preventDefault();
-// Меню цветовой темы: только готовые темы. Светлая и тёмная переключаются отдельной кнопкой рядом.
-const themeItems = computed<DropdownMenuItem[]>(() =>
-  presets.map((p) => ({
-    label: p.name,
-    slot: 'preset',
-    presetId: p.id,
-    type: 'checkbox' as const,
-    class: 'font-semibold',
-    checked: preset.value.id === p.id,
-    onUpdateChecked(checked: boolean) {
-      if (checked) selectPreset(p.id);
-    },
-    onSelect: keep,
-  })),
-);
 
 const NAV = [
   { id: 'how', label: 'Как это работает' },
@@ -74,21 +50,7 @@ function toAuth() {
           <UButton v-for="item in NAV" :key="item.id" color="neutral" variant="ghost" :label="item.label" @click="scrollTo(item.id)" />
         </nav>
         <div class="ms-auto flex items-center gap-2">
-          <UDropdownMenu :items="themeItems" :content="{ align: 'end' }" :ui="{ content: 'w-48 z-50' }">
-            <UTooltip :text="`Цветовая тема: ${preset.name}`" :ui="{ content: 'z-50' }">
-              <UButton color="neutral" variant="ghost" square aria-label="Выбрать цветовую тему" class="data-[state=open]:bg-elevated" data-testid="landing-theme">
-                <UIcon :name="preset.icon" class="size-5 shrink-0" :style="{ color: themeAccent(preset) }" />
-              </UButton>
-            </UTooltip>
-            <template #preset-leading="{ item }">
-              <span class="flex size-5 shrink-0 items-center justify-center rounded-full" :style="chipStyle(presetOf(item))">
-                <UIcon :name="presetOf(item).icon" class="size-2.5" />
-              </span>
-            </template>
-          </UDropdownMenu>
-          <UTooltip :text="isDark ? 'Светлая тема' : 'Тёмная тема'" :ui="{ content: 'z-50' }">
-            <UButton color="neutral" variant="ghost" square :icon="isDark ? 'i-lucide-sun' : 'i-lucide-moon'" :aria-label="isDark ? 'Включить светлую тему' : 'Включить тёмную тему'" @click="toggleMode" />
-          </UTooltip>
+          <ThemeControls />
           <UButton color="primary" variant="soft" icon="i-lucide-log-in" label="Войти" class="lg:hidden" @click="toAuth" />
         </div>
       </div>

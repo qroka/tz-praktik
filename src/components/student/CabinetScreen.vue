@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useSession } from '../../composables/useSession';
 import { useStudent } from '../../composables/useStudent';
 import type { HistoryItem } from '../../api/student';
+import ThemeControls from '../layout/ThemeControls.vue';
 import TzLogo from '../layout/TzLogo.vue';
 import SecretCode from './SecretCode.vue';
 
@@ -56,7 +57,10 @@ const statusOf = (item: HistoryItem) => (item.finishedAt ? { label: 'Завер�
           <p class="text-sm text-muted">ТЗ Практикум</p>
         </div>
       </div>
-      <UButton color="neutral" variant="outline" icon="i-lucide-log-out" label="Выйти" :loading="busy === 'logout'" data-testid="cabinet-logout" @click="exit" />
+      <div class="flex items-center gap-2">
+        <ThemeControls />
+        <UButton color="neutral" variant="outline" icon="i-lucide-log-out" label="Выйти" :loading="busy === 'logout'" data-testid="cabinet-logout" @click="exit" />
+      </div>
     </header>
 
     <UCard v-if="student" :ui="{ body: 'grid gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center sm:p-6' }">
