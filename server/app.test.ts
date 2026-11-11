@@ -222,17 +222,35 @@ describe('Сценарии', () => {
     const cleared = await call('PATCH', '/api/admin/scenarios/hot-water-unit', { settings: { customerAvatar: '' } });
     expect(cleared.data.settings.customerAvatar).toBeUndefined();
   });
-  it('текущий сценарий переключается, студентам отдаётся файл', async () => {
-    await call('PATCH', '/api/admin/scenarios/sample-compressor', { isCurrent: true });
-    const current = await (await fetch(`${base}/api/public/scenario`)).json();
-    expect(current.id).toBe('sample-compressor');
-    expect(current.pack.facts.length).toBeGreaterThan(0);
-    expect((await call('PATCH', '/api/admin/scenarios/sample-compressor', { isCurrent: false })).status).toBe(400);
+  it('сценарии — это варианты: номер по порядку, выкладывание в пул, выбор по id', async () => {
+    const list = (await call('GET', '/api/admin/scenarios')).data.items as { id: string; variant: number; published: boolean }[];
+    expect(list.map((item) => [item.id, item.variant])).toEqual([['hot-water-unit', 1], ['sample-compressor', 2]]);
+    // Встроенный выложен с самого начала, загруженный из файла — нет.
+    expect(list.find((item) => item.id === 'hot-water-unit')!.published).toBe(true);
+    expect(list.find((item) => item.id === 'sample-compressor')!.published).toBe(false);
+
+    let variants = (await (await fetch(`${base}/api/public/variants`)).json()).variants as { id: string; variant: number }[];
+    expect(variants.map((v) => v.id)).toEqual(['hot-water-unit']);
+    expect((await fetch(`${base}/api/public/scenario?id=sample-compressor`)).status).toBe(404);
+
+    const published = await call('PATCH', '/api/admin/scenarios/sample-compressor', { published: true });
+    expect(published.data.published).toBe(true);
+    variants = (await (await fetch(`${base}/api/public/variants`)).json()).variants;
+    expect(variants.map((v) => [v.id, v.variant])).toEqual([['hot-water-unit', 1], ['sample-compressor', 2]]);
+
+    const chosen = await (await fetch(`${base}/api/public/scenario?id=sample-compressor`)).json();
+    expect(chosen.id).toBe('sample-compressor');
+    expect(chosen.variant).toBe(2);
+    expect(chosen.pack.facts.length).toBeGreaterThan(0);
+    // Без id сайт открывается с первого выложенного варианта.
+    expect((await (await fetch(`${base}/api/public/scenario`)).json()).id).toBe('hot-water-unit');
+
+    expect((await call('PATCH', '/api/admin/scenarios/sample-compressor', { published: 'да' })).status).toBe(400);
+    expect((await call('PATCH', '/api/admin/scenarios/sample-compressor', { published: false })).data.published).toBe(false);
+    expect((await fetch(`${base}/api/public/scenario?id=sample-compressor`)).status).toBe(404);
   });
-  it('удалить нельзя встроенный и текущий, с попытками — только подтвердив', async () => {
+  it('удалить нельзя встроенный, с попытками — только подтвердив; номера вариантов не сдвигаются', async () => {
     expect((await call('DELETE', '/api/admin/scenarios/hot-water-unit')).status).toBe(400);
-    expect((await call('DELETE', '/api/admin/scenarios/sample-compressor')).status).toBe(400);
-    await call('PATCH', '/api/admin/scenarios/hot-water-unit', { isCurrent: true });
     await fetch(`${base}/api/student/attempts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scenarioId: 'sample-compressor', attempt: attempt({ scenarioId: 'sample-compressor', studentName: 'Анна Тестова', seed: 77 }) }) });
     expect((await call('DELETE', '/api/admin/scenarios/sample-compressor')).status).toBe(409);
     expect((await call('DELETE', '/api/admin/scenarios/sample-compressor?withAttempts=1')).data.deletedAttempts).toBe(1);
@@ -376,6 +394,12 @@ describe('Сайт на корневом пути (свой домен, BASE_PAT
       expect(home.status).toBe(200);
       expect(await home.text()).toContain('<title>ТЗ</title>');
       expect((await realFetch(`${url}/assets/app.js`, { redirect: 'manual' })).status).toBe(200);
+      // Обычные адреса без «#»: любой адрес приложения отдаёт index.html, потерянный файл — 404.
+      const admin = await realFetch(`${url}/admin/scenarios/hot-water-unit`, { redirect: 'manual' });
+      expect(admin.status).toBe(200);
+      expect(await admin.text()).toContain('<title>ТЗ</title>');
+      expect((await realFetch(`${url}/continue/лиса-мост-река`, { redirect: 'manual' })).status).toBe(200);
+      expect((await realFetch(`${url}/assets/missing.js`, { redirect: 'manual' })).status).toBe(404);
       expect((await realFetch(`${url}/api/public/scenario`)).status).toBe(200);
     } finally {
       app.server.close();

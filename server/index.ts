@@ -21,7 +21,7 @@ if (users === 0) {
 
 const { server } = createApp(db, config);
 server.listen(config.port, config.host, () => {
-  console.log(`Сервер: http://${config.host}:${config.port}${config.basePath}  (панель: #/admin)`);
+  console.log(`Сервер: http://${config.host}:${config.port}${config.basePath}  (панель: ${config.basePath === '/' ? '/admin' : '#/admin'})`);
   console.log(`База данных: ${config.dbPath}`);
 });
 

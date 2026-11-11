@@ -126,7 +126,9 @@ const tabs = computed<{ id: typeof tab.value; label: string; count?: number }[]>
           <div class="min-w-0 space-y-1">
             <div class="flex flex-wrap items-center gap-2">
               <h2 class="text-xl font-semibold">{{ summary.settings.title ?? scenario.title }}</h2>
-              <UBadge v-if="summary.isCurrent" label="Текущий для студентов" color="success" variant="subtle" />
+              <UBadge :label="`Вариант ${summary.variant}`" color="primary" variant="solid" />
+              <UBadge v-if="summary.published" label="Выложен" color="success" variant="subtle" icon="i-lucide-eye" />
+              <UBadge v-else label="Не выложен" color="neutral" variant="subtle" icon="i-lucide-eye-off" />
               <UBadge :label="summary.kind === 'builtin' ? 'Встроенный' : 'Из файла'" color="neutral" variant="outline" />
             </div>
             <p class="text-sm text-muted">{{ scenario.subtitle }}</p>

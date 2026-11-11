@@ -21,6 +21,9 @@ export type HistoryItem = {
   disclosed: number;
 };
 
+/** Выложенный вариант: студент выбирает его перед началом работы. */
+export type VariantItem = { id: string; variant: number; kind: 'builtin' | 'pack'; title: string; brief: string | null; minutes: number | null };
+
 export function loadStudentSession(): StudentSession | null {
   try {
     const raw = JSON.parse(window.localStorage.getItem(KEY) ?? 'null') as Partial<StudentSession> | null;
@@ -53,6 +56,7 @@ export const getStudentToken = (): string | null => loadStudentSession()?.token 
 type Authorized = { student: StudentProfile; token: string };
 
 export const studentApi = {
+  variants: () => request<{ variants: VariantItem[] }>('/public/variants', { timeout: 8000 }),
   groups: () => request<{ groups: string[] }>('/student/groups', { timeout: 8000 }),
   register: (fullName: string, group: string) => request<Authorized>('/student/register', { method: 'POST', body: { fullName, group } }),
   login: (code: string) => request<Authorized>('/student/login', { method: 'POST', body: { code } }),

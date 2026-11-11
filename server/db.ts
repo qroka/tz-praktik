@@ -102,6 +102,16 @@ const MIGRATIONS: string[] = [
   ALTER TABLE attempts ADD COLUMN student_id INTEGER REFERENCES students(id) ON DELETE SET NULL;
   CREATE INDEX idx_attempts_student ON attempts(student_id);
   `,
+  // 5: сценарии — это варианты. variant — номер варианта (по порядку создания), published — выложен ли он студентам.
+  // Раньше студентам показывался один «текущий» сценарий: он остаётся выложенным, остальные нужно выложить вручную.
+  `
+  ALTER TABLE scenarios ADD COLUMN variant INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE scenarios ADD COLUMN published INTEGER NOT NULL DEFAULT 0;
+  UPDATE scenarios SET published = is_current;
+  UPDATE scenarios SET variant = (
+    SELECT COUNT(*) FROM scenarios s2 WHERE s2.created_at < scenarios.created_at OR (s2.created_at = scenarios.created_at AND s2.id <= scenarios.id)
+  );
+  `,
 ];
 
 export type Db = DatabaseSync;
@@ -137,9 +147,10 @@ function seedBuiltin(db: Db) {
   const exists = db.prepare('SELECT 1 FROM scenarios WHERE id = ?').get(BUILTIN_SCENARIO.id);
   if (exists) return;
   const now = new Date().toISOString();
-  const hasCurrent = db.prepare('SELECT 1 FROM scenarios WHERE is_current = 1').get();
-  db.prepare('INSERT INTO scenarios (id, title, kind, is_current, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)').run(
-    BUILTIN_SCENARIO.id, BUILTIN_SCENARIO.title, 'builtin', hasCurrent ? 0 : 1, now, now,
+  const variant = (db.prepare('SELECT COALESCE(MAX(variant), 0) + 1 AS n FROM scenarios').get() as { n: number }).n;
+  const published = db.prepare('SELECT 1 FROM scenarios WHERE published = 1').get() ? 0 : 1;
+  db.prepare('INSERT INTO scenarios (id, title, kind, is_current, variant, published, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
+    BUILTIN_SCENARIO.id, BUILTIN_SCENARIO.title, 'builtin', published, variant, published, now, now,
   );
 }
 

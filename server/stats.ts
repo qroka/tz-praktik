@@ -108,14 +108,14 @@ export function computeStats(db: Db, scenarioId?: string, group?: string) {
 
   const scenarios = db
     .prepare(
-      `SELECT s.id AS id, s.title AS title, s.is_current AS isCurrent,
+      `SELECT s.id AS id, s.title AS title, s.variant AS variant, s.published AS published,
               COUNT(a.id) AS attempts,
               SUM(CASE WHEN a.finished_at IS NOT NULL THEN 1 ELSE 0 END) AS finished,
               AVG(a.score) AS avgScore
        FROM scenarios s LEFT JOIN attempts a ON a.scenario_id = s.id
-       GROUP BY s.id ORDER BY s.is_current DESC, s.title`,
+       GROUP BY s.id ORDER BY s.variant`,
     )
-    .all() as { id: string; title: string; isCurrent: number; attempts: number; finished: number | null; avgScore: number | null }[];
+    .all() as { id: string; title: string; variant: number; published: number; attempts: number; finished: number | null; avgScore: number | null }[];
 
   return {
     scenarioId: scenarioId ?? null,
@@ -133,7 +133,7 @@ export function computeStats(db: Db, scenarioId?: string, group?: string) {
     },
     grades: Object.entries(grades).map(([grade, count]) => ({ grade, count })),
     byDay: Object.entries(byDay).sort(([a], [b]) => a.localeCompare(b)).slice(-30).map(([day, count]) => ({ day, count })),
-    scenarios: scenarios.map((row) => ({ ...row, isCurrent: Boolean(row.isCurrent), finished: row.finished ?? 0, avgScore: row.avgScore === null ? null : round(row.avgScore) })),
+    scenarios: scenarios.map((row) => ({ ...row, published: Boolean(row.published), finished: row.finished ?? 0, avgScore: row.avgScore === null ? null : round(row.avgScore) })),
     parts: [...parts.entries()].map(([id, value]) => ({ id, label: value.label, avg: round(value.score / value.count), max: value.max })),
     facts: [...facts.entries()]
       .map(([factId, value]) => ({

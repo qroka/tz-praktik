@@ -7,7 +7,7 @@ import TzLogo from '../layout/TzLogo.vue';
 import SecretCode from './SecretCode.vue';
 
 const { copyText } = useSession();
-const { student, history, historyState, historyError, currentScenario, refreshHistory, logout, startNew, open } = useStudent();
+const { student, history, historyState, historyError, variants, variantsState, refreshVariants, refreshHistory, logout, startNew, open } = useStudent();
 
 const busy = ref<string | null>(null);
 const error = ref<string | null>(null);
@@ -18,9 +18,6 @@ const date = (iso: string) => new Date(iso).toLocaleString('ru-RU', { day: '2-di
 
 /** Незавершённая попытка, к которой стоит вернуться: самая свежая. */
 const unfinished = computed(() => history.value.find((item) => !item.finishedAt) ?? null);
-
-const scenarioTitle = computed(() => currentScenario.value?.settings.title ?? currentScenario.value?.title ?? 'Учебный сценарий');
-const scenarioBrief = computed(() => currentScenario.value?.settings.publicBrief ?? null);
 
 async function run(id: string, action: () => Promise<{ ok: true } | { ok: false; error: string }>) {
   if (busy.value) return;
@@ -34,7 +31,7 @@ async function run(id: string, action: () => Promise<{ ok: true } | { ok: false;
   }
 }
 
-const begin = () => run('new', startNew);
+const begin = (id: string) => run(`variant-${id}`, () => startNew(id));
 const openItem = (item: HistoryItem) => run(item.key, () => open(item));
 
 async function exit() {
@@ -78,21 +75,37 @@ const statusOf = (item: HistoryItem) => (item.finishedAt ? { label: 'Завер�
 
     <UAlert v-if="error" color="error" variant="subtle" icon="i-lucide-circle-alert" :description="error" role="alert" data-testid="cabinet-error" />
 
-    <div class="grid gap-4 md:grid-cols-2">
+    <div v-if="unfinished">
       <UCard v-if="unfinished" :ui="{ body: 'space-y-3 p-5' }" class="border-primary/40" data-testid="continue-card">
         <div class="flex items-center gap-2"><UIcon name="i-lucide-play-circle" class="size-5 text-primary" /><h2 class="font-semibold">Продолжить попытку</h2></div>
         <p class="text-sm text-muted">{{ unfinished.scenarioTitle ?? 'Учебный сценарий' }}. Начата {{ date(unfinished.startedAt) }}, вопросов: {{ unfinished.questions }}.</p>
         <UButton icon="i-lucide-arrow-right" trailing label="Продолжить" :loading="busy === unfinished.key" data-testid="continue-button" @click="openItem(unfinished)" />
       </UCard>
 
-      <UCard :ui="{ body: 'space-y-3 p-5' }" :class="{ 'md:col-span-2': !unfinished }">
-        <div class="flex items-center gap-2"><UIcon name="i-lucide-rotate-ccw" class="size-5 text-primary" /><h2 class="font-semibold">{{ history.length ? 'Начать ещё раз' : 'Первая попытка' }}</h2></div>
-        <p class="text-sm"><b>{{ scenarioTitle }}</b></p>
-        <p v-if="scenarioBrief" class="text-sm text-muted">{{ scenarioBrief }}</p>
-        <p class="text-sm text-muted">Попытка сохраняется автоматически, вы сможете вернуться к ней позже.</p>
-        <UButton :color="unfinished ? 'neutral' : 'primary'" :variant="unfinished ? 'outline' : 'solid'" icon="i-lucide-plus" label="Начать новую попытку" :loading="busy === 'new'" data-testid="new-attempt" @click="begin" />
-      </UCard>
     </div>
+
+    <section class="space-y-3" aria-labelledby="variants-title" data-testid="variants">
+      <div class="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h2 id="variants-title" class="text-lg font-semibold">{{ history.length ? 'Начать ещё раз' : 'Выберите вариант' }}</h2>
+          <p class="text-sm text-muted">Перед началом выберите вариант: у каждого свой заказчик и объект. Попытка сохраняется автоматически, к ней можно вернуться позже.</p>
+        </div>
+        <UButton size="xs" color="neutral" variant="ghost" icon="i-lucide-refresh-cw" label="Обновить список" :loading="variantsState === 'loading'" @click="refreshVariants" />
+      </div>
+      <UAlert v-if="variantsState === 'error'" color="error" variant="subtle" icon="i-lucide-circle-alert" description="Не удалось загрузить список вариантов. Проверьте соединение и обновите." />
+      <UEmpty v-else-if="!variants.length && variantsState !== 'loading'" icon="i-lucide-hourglass" title="Вариантов пока нет" description="Преподаватель ещё не выложил ни одного варианта. Загляните позже." data-testid="variants-empty" />
+      <div v-else class="grid gap-3 md:grid-cols-2">
+        <UCard v-for="item in variants" :key="item.id" :ui="{ body: 'flex h-full flex-col gap-3 p-5' }" :data-testid="`variant-${item.id}`">
+          <div class="flex items-center gap-2">
+            <UBadge color="primary" variant="subtle" :label="`Вариант ${item.variant}`" />
+            <UBadge v-if="item.minutes" color="neutral" variant="subtle" icon="i-lucide-clock" :label="`≈${item.minutes} мин`" />
+          </div>
+          <h3 class="font-semibold">{{ item.title }}</h3>
+          <p v-if="item.brief" class="line-clamp-4 text-sm text-muted">{{ item.brief }}</p>
+          <UButton class="mt-auto justify-center" :color="unfinished ? 'neutral' : 'primary'" :variant="unfinished ? 'outline' : 'solid'" icon="i-lucide-play" :label="`Начать вариант ${item.variant}`" :loading="busy === `variant-${item.id}`" :data-testid="`variant-start-${item.id}`" @click="begin(item.id)" />
+        </UCard>
+      </div>
+    </section>
 
     <UCard :ui="{ body: 'space-y-3 p-5' }">
       <div class="flex flex-wrap items-center justify-between gap-2">

@@ -5,7 +5,10 @@ export type ScenarioSummary = {
   id: string;
   title: string;
   kind: 'builtin' | 'pack';
-  isCurrent: boolean;
+  /** Номер варианта: сценарий 1 — первый вариант и так далее. */
+  variant: number;
+  /** Выложен ли сценарий: выложенные попадают в список вариантов, из которого студент выбирает. */
+  published: boolean;
   factsTotal: number | null;
   settings: { title?: string; publicBrief?: string; estimatedMinutes?: number; note?: string; customerName?: string; customerAvatar?: string };
   attempts: number;

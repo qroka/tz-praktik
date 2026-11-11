@@ -24,19 +24,9 @@ onMounted(load);
 const fail = (e: unknown) => toast.add({ title: 'Не получилось', description: e instanceof Error ? e.message : String(e), color: 'error', icon: 'i-lucide-circle-alert' });
 const ok = (title: string) => toast.add({ title, color: 'success', icon: 'i-lucide-circle-check' });
 
-async function makeCurrent(item: ScenarioSummary) {
-  try {
-    await adminApi.patch(`/admin/scenarios/${item.id}`, { isCurrent: true });
-    ok(`Студенты теперь проходят «${item.settings.title ?? item.title}»`);
-    await load();
-  } catch (e) {
-    fail(e);
-  }
-}
-
 // --- Настройки ---
 const editing = ref<ScenarioSummary | null>(null);
-const form = ref({ title: '', publicBrief: '', estimatedMinutes: '', note: '', customerName: '', customerAvatar: '' });
+const form = ref({ title: '', publicBrief: '', estimatedMinutes: '', note: '', customerName: '', customerAvatar: '', published: false });
 const avatarInput = ref<HTMLInputElement | null>(null);
 
 /** Квадратная обрезка по центру и сжатие до 256 px (WebP или JPEG): так аватарка занимает 20–40 КБ. */
@@ -69,14 +59,16 @@ function openSettings(item: ScenarioSummary) {
     note: item.settings.note ?? '',
     customerName: item.settings.customerName ?? '',
     customerAvatar: item.settings.customerAvatar ?? '',
+    published: item.published,
   };
 }
 
 async function saveSettings() {
   if (!editing.value) return;
   try {
-    await adminApi.patch(`/admin/scenarios/${editing.value.id}`, { settings: form.value });
-    ok('Настройки сохранены');
+    const { published, ...settings } = form.value;
+    await adminApi.patch(`/admin/scenarios/${editing.value.id}`, { settings, published });
+    ok(published ? 'Сохранено: вариант виден студентам' : 'Сохранено: вариант скрыт от студентов');
     editing.value = null;
     await load();
   } catch (e) {
@@ -174,7 +166,7 @@ async function remove() {
       </div>
     </Teleport>
     <p class="max-w-3xl text-sm text-muted">
-      Студентам показывается один сценарий — текущий. Новый сценарий готовит ChatGPT по промту из docs/prompt-novyj-scenarij.md; перед загрузкой файл проверяется в браузере.
+      Каждый сценарий — это вариант: сценарий 1 — первый вариант, и так далее. Перед началом работы студент выбирает один из выложенных вариантов. Чтобы сценарий попал в список, откройте «Настройки» и отметьте «Выложить сценарий». Новый сценарий готовит ChatGPT по промту из docs/prompt-novyj-scenarij.md; перед загрузкой файл проверяется.
     </p>
     <UAlert v-if="error" color="error" variant="subtle" icon="i-lucide-circle-alert" :description="error" />
 
@@ -183,8 +175,10 @@ async function remove() {
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div class="min-w-0 space-y-1">
             <div class="flex flex-wrap items-center gap-2">
+              <UBadge color="primary" variant="solid" :label="`Вариант ${item.variant}`" :data-testid="`variant-badge-${item.id}`" />
               <h2 class="text-lg font-semibold">{{ item.settings.title ?? item.title }}</h2>
-              <UBadge v-if="item.isCurrent" label="Текущий для студентов" color="success" variant="subtle" />
+              <UBadge v-if="item.published" label="Выложен" color="success" variant="subtle" icon="i-lucide-eye" />
+              <UBadge v-else label="Не выложен" color="neutral" variant="subtle" icon="i-lucide-eye-off" />
               <UBadge :label="item.kind === 'builtin' ? 'Встроенный' : 'Из файла'" color="neutral" variant="outline" />
             </div>
             <p class="text-xs text-muted">
@@ -200,11 +194,10 @@ async function remove() {
         </div>
         <div class="flex flex-wrap gap-2">
           <UButton size="sm" icon="i-lucide-eye" label="Открыть сценарий" :data-testid="`open-${item.id}`" @click="router.push(`/admin/scenarios/${item.id}`)" />
-          <UButton v-if="!item.isCurrent" size="sm" color="neutral" variant="outline" icon="i-lucide-badge-check" label="Сделать текущим" @click="makeCurrent(item)" />
           <UButton size="sm" color="neutral" variant="outline" icon="i-lucide-settings-2" label="Настройки" @click="openSettings(item)" />
           <UButton v-if="item.kind === 'pack'" size="sm" color="neutral" variant="outline" icon="i-lucide-download" label="Скачать файл" @click="downloadPack(item)" />
           <UButton size="sm" color="neutral" variant="outline" icon="i-lucide-file-text" label="Отчёт" @click="downloadFromServer(`/admin/reports/scenario/${item.id}`, `report-${item.id}.md`).catch(fail)" />
-          <UButton v-if="item.kind === 'pack' && !item.isCurrent" size="sm" color="error" variant="ghost" icon="i-lucide-trash-2" label="Удалить" @click="removing = item" />
+          <UButton v-if="item.kind === 'pack'" size="sm" color="error" variant="ghost" icon="i-lucide-trash-2" label="Удалить" @click="removing = item" />
         </div>
       </UCard>
     </div>
@@ -212,6 +205,7 @@ async function remove() {
     <UModal v-model:open="editOpen" title="Настройки сценария" description="Заголовок, описание, время занятия, имя и аватарку заказчика видят студенты. Заметку видит только преподаватель.">
       <template #body>
         <div class="space-y-4">
+          <UCheckbox v-model="form.published" label="Выложить сценарий" description="Выложенный сценарий попадает в список вариантов: студент увидит его и сможет выбрать перед началом работы. Не выложенный виден только вам." data-testid="settings-published" />
           <UFormField label="Название"><UInput v-model="form.title" class="w-full" placeholder="Оставьте пустым — название из сценария" /></UFormField>
           <UFormField label="Описание для студента"><UTextarea v-model="form.publicBrief" class="w-full" :rows="4" placeholder="Оставьте пустым — описание из сценария" /></UFormField>
           <UFormField label="Заказчик в чате" hint="Имя и аватарку видят студенты">

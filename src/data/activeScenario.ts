@@ -51,7 +51,7 @@ export let scenario: Scenario = fromFile();
 /** Подключён ли сервер: только тогда попытки отправляются преподавателю. */
 export let serverConnected = false;
 
-export type PublicScenario = { id: string; kind: 'builtin' | 'pack'; title?: string; settings: ScenarioSettings; pack: ScenarioPack | null };
+export type PublicScenario = { id: string; kind: 'builtin' | 'pack'; title?: string; variant?: number; settings: ScenarioSettings; pack: ScenarioPack | null };
 
 /** Делает сценарий с сервера активным. Бросает ошибку, если файл сценария не собирается. */
 export function applyRemoteScenario(remote: PublicScenario): void {
@@ -80,15 +80,11 @@ async function restoreScenarioOfLocalAttempt(): Promise<void> {
   }
 }
 
-/** Возвращает сценарий, который преподаватель выбрал для новых попыток (после просмотра старой попытки активным мог остаться другой). */
-export async function refreshCurrentScenario(): Promise<PublicScenario | null> {
-  try {
-    const remote = await request<PublicScenario>('/public/scenario', { timeout: 5000 });
-    applyRemoteScenario(remote);
-    return remote;
-  } catch {
-    return null;
-  }
+/** Подключает вариант, который выбрал студент: сценарий скачивается с сервера и становится активным. */
+export async function selectVariant(id: string): Promise<PublicScenario> {
+  const remote = await request<PublicScenario>(`/public/scenario?id=${encodeURIComponent(id)}`, { timeout: 10000 });
+  applyRemoteScenario(remote);
+  return remote;
 }
 
 export async function initScenario(): Promise<void> {

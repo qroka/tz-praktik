@@ -5,6 +5,7 @@ import { minSectionWords } from '../../data/evaluation';
 import { useLayout } from '../../composables/useLayout';
 import { useSession } from '../../composables/useSession';
 import { countWords } from '../../state/learningProgress';
+import { effectiveScreen } from '../../state/screens';
 import type { Attempt, Screen } from '../../types';
 import ChatWorkspace from '../chat/ChatWorkspace.vue';
 import TzEditor from '../editor/TzEditor.vue';
@@ -18,13 +19,8 @@ import ConfirmDialog from './ConfirmDialog.vue';
 const { attempt, scenario, summary, reset, finish, applyImport, readProgressFile, notify, exportProgress, conflict, useServerVersion, keepMine } = useSession();
 const { layout } = useLayout();
 
-const screen = computed<Screen>(() => {
-  const current = attempt.value!;
-  // Завершённая попытка: редактора нет, итоговый текст ТЗ — в отчёте.
-  if (current.result && current.screen === 'tz') return 'result';
-  if (!current.result && current.screen === 'result') return 'dialog';
-  return current.screen;
-});
+// Завершённая попытка: редактора нет, итоговый текст ТЗ — в отчёте.
+const screen = computed<Screen>(() => effectiveScreen(attempt.value!));
 
 const withProgress = computed(() => ['dialog', 'registry', 'tz'].includes(screen.value));
 const showSide = computed(() => layout.value === 'wide' && withProgress.value);

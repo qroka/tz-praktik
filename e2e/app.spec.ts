@@ -330,6 +330,37 @@ test.describe('Мобильный сброс', () => {
   });
 });
 
+test('Разделы — отдельные адреса: переключение меняет адрес, «Назад» и прямая ссылка работают', async ({ page }) => {
+  await start(page, 'Адреса');
+  await expect(page).toHaveURL(/#\/dialog$/);
+
+  await nav(page, /Реестр требований/).click();
+  await expect(page).toHaveURL(/#\/registry$/);
+  await expect(page.getByTestId('registry-empty')).toBeVisible();
+
+  await nav(page, /Мой прогресс/).click();
+  await expect(page).toHaveURL(/#\/progress$/);
+
+  // «Назад» возвращает на предыдущий раздел, а не уводит со страницы.
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/registry$/);
+  await page.goBack();
+  await expect(page).toHaveURL(/#\/dialog$/);
+  await expect(page.getByLabel('Ваш вопрос заказчику')).toBeVisible();
+
+  // Прямая ссылка на раздел открывает его (после перезагрузки попытка восстановится из браузера).
+  await page.goto('./#/tz');
+  await expect(page.getByLabel(/Текст раздела/)).toBeVisible();
+  await page.waitForTimeout(700); // автосохранение попытки срабатывает через 350 мс после последнего изменения
+  await page.reload();
+  await expect(page.getByLabel(/Текст раздела/)).toBeVisible();
+  await expect(page).toHaveURL(/#\/tz$/);
+
+  // Результата до завершения нет: адрес заменяется на подходящий.
+  await page.goto('./#/result');
+  await expect(page).toHaveURL(/#\/dialog$/);
+});
+
 test('Тема и режим переключаются и сохраняются', async ({ page }) => {
   await start(page, 'Тема');
   await expect(page.locator('html')).toHaveClass(/dark/);

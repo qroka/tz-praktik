@@ -66,7 +66,7 @@ function switchMode(next: 'login' | 'register') {
             <p class="rounded-lg bg-elevated px-4 py-3 text-center text-xl font-semibold break-words" data-testid="new-code-value">{{ newCode }}</p>
             <div class="flex flex-wrap gap-2">
               <UButton color="neutral" variant="outline" icon="i-lucide-copy" label="Скопировать код" @click="copyText(newCode, 'Код скопирован')" />
-              <UButton class="grow" trailing-icon="i-lucide-arrow-right" label="Я записал код, продолжить" data-testid="new-code-continue" @click="dismissNewCode" />
+              <UButton class="grow justify-center" :ui="{ trailingIcon: 'ms-0' }" trailing-icon="i-lucide-arrow-right" label="Я записал код, продолжить" data-testid="new-code-continue" @click="dismissNewCode" />
             </div>
             <p class="text-xs text-muted">Код всегда виден в личном кабинете. Если потеряете, преподаватель выдаст новый.</p>
           </div>

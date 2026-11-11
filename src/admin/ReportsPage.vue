@@ -11,7 +11,7 @@ const busy = ref('');
 const toast = useToast();
 
 const items = computed(() => [{ label: 'Все сценарии', value: 'all' }, ...scenarios.value.map((s) => ({ label: s.settings.title ?? s.title, value: s.id }))]);
-const reportScenario = computed(() => (scenario.value === 'all' ? scenarios.value.find((s) => s.isCurrent)?.id ?? scenarios.value[0]?.id : scenario.value));
+const reportScenario = computed(() => (scenario.value === 'all' ? scenarios.value.find((s) => s.published)?.id ?? scenarios.value[0]?.id : scenario.value));
 
 onMounted(async () => {
   try {

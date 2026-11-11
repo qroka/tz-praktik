@@ -41,7 +41,7 @@ async function submit() {
         <UAlert v-if="error" color="error" variant="subtle" icon="i-lucide-circle-alert" :description="error" role="alert" />
         <UButton type="submit" block :loading="busy" :disabled="!username || !password" label="Войти" data-testid="admin-submit" />
       </form>
-      <a href="#/" class="block text-center text-sm text-muted hover:underline">К тренажёру</a>
+      <RouterLink to="/" class="block text-center text-sm text-muted hover:underline">К тренажёру</RouterLink>
     </UCard>
   </div>
 </template>

@@ -1,21 +1,22 @@
 <script setup lang="ts">
-import { useId } from 'vue';
-
-// Знак «ТЗ Практикум»: пузырь диалога с вырезанными строками текста задания и галочкой, без фона.
+// Знак «ТЗ Практикум»: иконка Lucide bot-message-square (собеседник в диалоге). Без фона.
 // Цвет — currentColor; в интерфейсе знак красится основным цветом выбранной темы.
 defineProps<{ label?: string }>();
-const id = `tz-logo-${useId()}`;
 </script>
 
 <template>
-  <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" fill="currentColor" :role="label ? 'img' : undefined" :aria-label="label" :aria-hidden="label ? undefined : 'true'">
-    <defs>
-      <mask :id="id">
-        <rect width="32" height="32" fill="#fff" />
-        <path d="M10.5 12.2h11M10.5 16h4.5" fill="none" stroke="#000" stroke-width="1.9" stroke-linecap="round" />
-        <path d="M17.2 16.4l1.9 1.9 3.6-4" fill="none" stroke="#000" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
-      </mask>
-    </defs>
-    <path :mask="`url(#${id})`" d="M7 3h18a4 4 0 0 1 4 4v14a4 4 0 0 1-4 4H16l-7 5.5V25H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4z" />
+  <svg
+    viewBox="0 0 24 24"
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    :role="label ? 'img' : undefined"
+    :aria-label="label"
+    :aria-hidden="label ? undefined : 'true'"
+  >
+    <path d="M12 6V2H8"/><path d="M15 11v2"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M20 16a2 2 0 0 1-2 2H8.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 4 20.286V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/><path d="M9 11v2"/>
   </svg>
 </template>

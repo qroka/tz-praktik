@@ -35,7 +35,7 @@ const sections = [
   { id: 'account', label: 'Аккаунт', icon: 'i-lucide-user-cog', page: AccountPage },
 ];
 
-/** Открытый сценарий: #/admin/scenarios/<id>. */
+/** Открытый сценарий: /admin/scenarios/<id>. */
 const detailId = computed(() => (route.params.section === 'scenarios' && typeof route.params.id === 'string' ? route.params.id : null));
 const current = computed(() => sections.find((item) => item.id === route.params.section) ?? sections[0]);
 
@@ -133,7 +133,7 @@ onBeforeUnmount(() => window.removeEventListener('tz-admin-expired', onExpired))
     />
     <div class="flex gap-2">
       <UButton label="Повторить" icon="i-lucide-refresh-cw" @click="check" />
-      <UButton label="К тренажёру" color="neutral" variant="outline" to="#/" />
+      <UButton label="К тренажёру" color="neutral" variant="outline" to="/" />
     </div>
   </div>
 

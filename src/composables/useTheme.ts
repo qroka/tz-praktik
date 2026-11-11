@@ -17,15 +17,14 @@ function primaryColor(): string {
   return value;
 }
 
-const FAVICON_PATH = 'M7 3h18a4 4 0 0 1 4 4v14a4 4 0 0 1-4 4H16l-7 5.5V25H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4z';
+// Та же иконка, что в TzLogo (Lucide bot-message-square), в основном цвете темы.
+const FAVICON_PATHS =
+  '<path d="M12 6V2H8"/><path d="M15 11v2"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="M20 16a2 2 0 0 1-2 2H8.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 4 20.286V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/><path d="M9 11v2"/>';
 
 function updateFavicon() {
   const color = primaryColor();
   const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><defs><mask id="m"><rect width="32" height="32" fill="#fff"/>` +
-    `<path d="M10.5 12.2h11M10.5 16h4.5" fill="none" stroke="#000" stroke-width="1.9" stroke-linecap="round"/>` +
-    `<path d="M17.2 16.4l1.9 1.9 3.6-4" fill="none" stroke="#000" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></mask></defs>` +
-    `<path mask="url(#m)" d="${FAVICON_PATH}" fill="${color}"/></svg>`;
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${FAVICON_PATHS}</svg>`;
   let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
   if (!link) {
     link = document.createElement('link');

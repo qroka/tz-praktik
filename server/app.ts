@@ -23,6 +23,8 @@ type ScenarioRow = {
   pack_json: string | null;
   facts_total: number | null;
   is_current: number;
+  variant: number;
+  published: number;
   settings_json: string;
   created_at: string;
   updated_at: string;
@@ -102,16 +104,50 @@ export function createApp(db: Db, config: Config): App {
   // ---------- Публичное API ----------
   router.add('GET', '/api/health', 'public', () => ({ ok: true }));
 
-  router.add('GET', '/api/public/scenario', 'public', () => {
-    const row = db.prepare('SELECT * FROM scenarios WHERE is_current = 1').get() as ScenarioRow | undefined;
-    if (!row) throw new HttpError(404, 'Сценарий не выбран.');
+  /**
+   * Сценарий для сайта студента. С ?id= — выбранный вариант (только выложенный). Без id — первый выложенный вариант:
+   * так сайт открывается, пока студент ещё не выбрал вариант. Если ничего не выложено, отдаётся первый сценарий по номеру.
+   */
+  router.add('GET', '/api/public/scenario', 'public', (ctx) => {
+    const id = ctx.url.searchParams.get('id');
+    let row: ScenarioRow | undefined;
+    if (id) {
+      row = scenarioRow(id);
+      if (!row || !row.published) throw new HttpError(404, 'Такой вариант не выложен.');
+    } else {
+      row =
+        (db.prepare('SELECT * FROM scenarios WHERE published = 1 ORDER BY variant LIMIT 1').get() as ScenarioRow | undefined) ??
+        (db.prepare('SELECT * FROM scenarios ORDER BY variant LIMIT 1').get() as ScenarioRow | undefined);
+    }
+    if (!row) throw new HttpError(404, 'Сценарий не найден.');
     return {
       id: row.id,
       kind: row.kind,
       title: row.title,
+      variant: row.variant,
       settings: parseSettings(row.settings_json),
       pack: row.kind === 'pack' && row.pack_json ? (JSON.parse(row.pack_json) as unknown) : null,
       updatedAt: row.updated_at,
+    };
+  });
+
+  /** Выложенные варианты: из них студент выбирает, с чего начать. Сами файлы сценариев здесь не отдаются. */
+  router.add('GET', '/api/public/variants', 'public', () => {
+    const rows = db.prepare('SELECT * FROM scenarios WHERE published = 1 ORDER BY variant').all() as ScenarioRow[];
+    const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : null);
+    return {
+      variants: rows.map((row) => {
+        const settings = parseSettings(row.settings_json);
+        const head = row.pack_json ? ((JSON.parse(row.pack_json) as { scenario?: Record<string, unknown> }).scenario ?? {}) : {};
+        return {
+          id: row.id,
+          variant: row.variant,
+          kind: row.kind,
+          title: settings.title ?? row.title,
+          brief: settings.publicBrief ?? text(head.publicBrief) ?? text(head.subtitle),
+          minutes: settings.estimatedMinutes ?? (typeof head.estimatedMinutes === 'number' ? head.estimatedMinutes : null),
+        };
+      }),
     };
   });
 
@@ -120,6 +156,7 @@ export function createApp(db: Db, config: Config): App {
     id: row.id,
     kind: row.kind,
     title: row.title,
+    variant: row.variant,
     settings: parseSettings(row.settings_json),
     pack: row.kind === 'pack' && row.pack_json ? (JSON.parse(row.pack_json) as unknown) : null,
     updatedAt: row.updated_at,
@@ -199,14 +236,15 @@ export function createApp(db: Db, config: Config): App {
     const rows = db
       .prepare(
         `SELECT s.*, COUNT(a.id) AS attempts, SUM(CASE WHEN a.finished_at IS NOT NULL THEN 1 ELSE 0 END) AS finished, AVG(a.score) AS avg_score
-         FROM scenarios s LEFT JOIN attempts a ON a.scenario_id = s.id GROUP BY s.id ORDER BY s.is_current DESC, s.created_at`,
+         FROM scenarios s LEFT JOIN attempts a ON a.scenario_id = s.id GROUP BY s.id ORDER BY s.variant`,
       )
       .all() as (ScenarioRow & { attempts: number; finished: number | null; avg_score: number | null })[];
     return rows.map((row) => ({
       id: row.id,
       title: row.title,
       kind: row.kind,
-      isCurrent: Boolean(row.is_current),
+      variant: row.variant,
+      published: Boolean(row.published),
       factsTotal: row.facts_total,
       settings: parseSettings(row.settings_json),
       attempts: row.attempts,
@@ -238,8 +276,9 @@ export function createApp(db: Db, config: Config): App {
     if (existing) {
       db.prepare('UPDATE scenarios SET title = ?, pack_json = ?, facts_total = ?, updated_at = ? WHERE id = ?').run(info.title, json, info.factsTotal, now, info.id);
     } else {
-      db.prepare('INSERT INTO scenarios (id, title, kind, pack_json, facts_total, is_current, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?)').run(
-        info.id, info.title, 'pack', json, info.factsTotal, now, now,
+      const variant = (db.prepare('SELECT COALESCE(MAX(variant), 0) + 1 AS n FROM scenarios').get() as { n: number }).n;
+      db.prepare('INSERT INTO scenarios (id, title, kind, pack_json, facts_total, is_current, variant, published, created_at, updated_at) VALUES (?, ?, ?, ?, ?, 0, ?, 0, ?, ?)').run(
+        info.id, info.title, 'pack', json, info.factsTotal, variant, now, now,
       );
     }
     return { id: info.id, replaced: Boolean(existing) };
@@ -248,18 +287,18 @@ export function createApp(db: Db, config: Config): App {
   router.add('PATCH', '/api/admin/scenarios/:id', 'admin', async (ctx) => {
     const row = scenarioRow(ctx.params.id);
     if (!row) throw new HttpError(404, 'Сценарий не найден.');
-    const body = await ctx.json<{ settings?: unknown; isCurrent?: unknown }>(250_000);
+    const body = await ctx.json<{ settings?: unknown; published?: unknown }>(250_000);
     const now = new Date().toISOString();
     transaction(db, () => {
       if (body.settings !== undefined) {
         const settings = cleanSettings(body.settings);
         db.prepare('UPDATE scenarios SET settings_json = ?, updated_at = ? WHERE id = ?').run(JSON.stringify(settings), now, row.id);
       }
-      if (body.isCurrent === true) {
-        db.prepare('UPDATE scenarios SET is_current = 0 WHERE is_current = 1').run();
-        db.prepare('UPDATE scenarios SET is_current = 1, updated_at = ? WHERE id = ?').run(now, row.id);
-      } else if (body.isCurrent === false && row.is_current) {
-        throw new HttpError(400, 'Чтобы снять отметку, выберите текущим другой сценарий.');
+      // «Выложить сценарий»: выложенные сценарии попадают в список вариантов, из которого студент выбирает, с чего начать.
+      if (typeof body.published === 'boolean') {
+        db.prepare('UPDATE scenarios SET published = ?, updated_at = ? WHERE id = ?').run(body.published ? 1 : 0, now, row.id);
+      } else if (body.published !== undefined) {
+        throw new HttpError(400, 'published: ожидается true или false.');
       }
     });
     return listScenarios().find((item) => item.id === row.id);
@@ -269,7 +308,6 @@ export function createApp(db: Db, config: Config): App {
     const row = scenarioRow(ctx.params.id);
     if (!row) throw new HttpError(404, 'Сценарий не найден.');
     if (row.kind === 'builtin') throw new HttpError(400, 'Встроенный сценарий удалить нельзя.');
-    if (row.is_current) throw new HttpError(400, 'Сначала выберите текущим другой сценарий.');
     const attempts = (db.prepare('SELECT COUNT(*) AS n FROM attempts WHERE scenario_id = ?').get(row.id) as { n: number }).n;
     if (attempts && ctx.url.searchParams.get('withAttempts') !== '1') {
       throw new HttpError(409, `У сценария ${attempts} попыток студентов. Они будут удалены вместе с ним: подтвердите удаление.`);
@@ -374,10 +412,19 @@ export function createApp(db: Db, config: Config): App {
 
   function serveStatic(res: ServerResponse, pathname: string): boolean {
     if (!pathname.startsWith(config.basePath)) return false;
-    const relative = decodeURIComponent(pathname.slice(config.basePath.length)) || 'index.html';
+    let relative: string;
+    try {
+      relative = decodeURIComponent(pathname.slice(config.basePath.length)) || 'index.html';
+    } catch {
+      // Неверная запись %-кодов в адресе: это не страница приложения.
+      return false;
+    }
     const file = normalize(join(config.staticDir, relative));
     if (file !== config.staticDir && !file.startsWith(config.staticDir + sep)) throw new HttpError(403, 'Доступ запрещён.');
-    const target = existsSync(file) && statSync(file).isFile() ? file : join(config.staticDir, 'index.html');
+    const found = existsSync(file) && statSync(file).isFile();
+    // Адреса приложения (/admin, /continue/…) отдают index.html; потерянный файл (/assets/old.js) — честный 404.
+    if (!found && extname(relative)) return false;
+    const target = found ? file : join(config.staticDir, 'index.html');
     if (!existsSync(target)) return false;
     const type = MIME[extname(target)] ?? 'application/octet-stream';
     res.writeHead(200, { 'Content-Type': type, 'Cache-Control': target.endsWith('index.html') ? 'no-cache' : 'public, max-age=3600' });

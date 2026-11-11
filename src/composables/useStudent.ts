@@ -2,8 +2,9 @@
 // Работает только при подключённом сервере; без него сайт ведёт себя по-старому (имя и локальное хранение).
 import { computed, ref, shallowRef } from 'vue';
 import { ApiError } from '../api/client';
-import { clearStudentSession, loadStudentSession, saveStudentSession, studentApi, type HistoryItem, type StudentSession } from '../api/student';
-import { refreshCurrentScenario, type PublicScenario } from '../data/activeScenario';
+import { clearStudentSession, loadStudentSession, saveStudentSession, studentApi, type HistoryItem, type StudentSession, type VariantItem } from '../api/student';
+import { selectVariant } from '../data/activeScenario';
+import { scenario as builtIn } from '../data/scenario';
 import { normalizeCode } from '../shared/resumeCode';
 import { useSession } from './useSession';
 
@@ -13,8 +14,9 @@ const historyState = ref<'idle' | 'loading' | 'error'>('idle');
 const historyError = ref('');
 /** Код только что зарегистрированного студента: показывается, пока он его не запишет. */
 const newCode = ref<string | null>(null);
-/** Сценарий, который получит новая попытка. */
-const currentScenario = ref<PublicScenario | null>(null);
+/** Выложенные варианты: студент выбирает один из них перед началом работы. */
+const variants = ref<VariantItem[]>([]);
+const variantsState = ref<'idle' | 'loading' | 'error'>('idle');
 /** Причина, по которой пришлось войти заново (токен устарел). */
 const expiredNotice = ref(false);
 
@@ -90,7 +92,20 @@ export function useStudent() {
       historyState.value = 'error';
       historyError.value = failure(error, 'Не удалось загрузить историю.').error;
     }
-    currentScenario.value = (await refreshCurrentScenario()) ?? currentScenario.value;
+    await refreshVariants();
+  }
+
+  /** Список выложенных вариантов. У встроенного сценария описание и время берутся из самого сайта. */
+  async function refreshVariants(): Promise<void> {
+    variantsState.value = 'loading';
+    try {
+      variants.value = (await studentApi.variants()).variants.map((item) =>
+        item.kind === 'builtin' ? { ...item, brief: item.brief ?? builtIn.publicBrief, minutes: item.minutes ?? builtIn.estimatedMinutes } : item,
+      );
+      variantsState.value = 'idle';
+    } catch {
+      variantsState.value = 'error';
+    }
   }
 
   /** Выход из аккаунта: сначала сохраняем открытую попытку. */
@@ -112,13 +127,15 @@ export function useStudent() {
     return true;
   }
 
-  /** Начать ещё раз: новая попытка по сценарию, который сейчас выбран преподавателем. */
-  async function startNew(): Promise<Result> {
+  /** Новая попытка по выбранному варианту: сценарий скачивается с сервера (после просмотра старой попытки активным мог остаться другой). */
+  async function startNew(variantId: string): Promise<Result> {
     const me = student.value;
     if (!me) return { ok: false, error: 'Войдите в личный кабинет.' };
-    // После просмотра старой попытки активным мог остаться её сценарий.
-    const remote = await refreshCurrentScenario();
-    if (remote) currentScenario.value = remote;
+    try {
+      await selectVariant(variantId);
+    } catch (error) {
+      return failure(error, 'Не удалось открыть вариант. Возможно, преподаватель убрал его из списка: обновите страницу.');
+    }
     sessionApi.startAttempt(me);
     return { ok: true };
   }
@@ -134,7 +151,9 @@ export function useStudent() {
     historyState,
     historyError,
     newCode,
-    currentScenario,
+    variants,
+    variantsState,
+    refreshVariants,
     expiredNotice,
     register,
     login,
