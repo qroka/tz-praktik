@@ -13,6 +13,7 @@
     "test:e2e": "playwright test",
     "typecheck": "vue-tsc --noEmit",
     "docs": "vitest run src/docs.test.ts --mode docs",
+    "scenario:check": "vitest run src/data/scenarioPack.test.ts --mode scenario",
     "screenshots": "node scripts/screenshots.mjs"
   },
   "devDependencies": {

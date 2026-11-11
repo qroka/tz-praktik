@@ -1,7 +1,7 @@
 // Состояние текущей попытки: единственный источник правды интерфейса.
 // Бизнес-логика остаётся в чистых модулях src/engine и src/state.
 import { computed, ref, shallowRef, watch } from 'vue';
-import { scenario } from '../data/scenario';
+import { scenario } from '../data/activeScenario';
 import { createAttempt, finishAttempt, newSeed, sendQuestion, setScreen } from '../state/attempt';
 import { downloadFile, parseProgress, progressFileName, toProgressJson } from '../state/exporters';
 import { buildHint, summarizeProgress } from '../state/learningProgress';

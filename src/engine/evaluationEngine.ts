@@ -189,13 +189,13 @@ export function evaluateAttempt(attempt: Attempt, scenario: Scenario): Evaluatio
   const { withUnit, total: totalNumbers } = numbersWithUnits(tzText, scenario);
   const numbersShare = totalNumbers ? withUnit / totalNumbers : 0;
 
-  const warnFacts = ['temp_warning', 'press_out_warning', 'temp_alarm', 'press_out_alarm'];
+  const warnFacts = scenario.evaluation?.warnAlarmFacts ?? ['temp_warning', 'press_out_warning', 'temp_alarm', 'press_out_alarm'];
   const warnFound = warnFacts.filter((id) => {
     const fact = scenario.facts.find((item) => item.id === id);
     return fact ? factInText(fact, tzText) : false;
   }).length;
-  const textMixups = mixups(`${tzText}\n${registryText}`);
-  const warnShare = (warnFound / warnFacts.length) * (textMixups.warnAlarm.length ? 0.5 : 1);
+  const textMixups = scenario.evaluation?.builtInMixups === false ? { pressure: [], warnAlarm: [] } : mixups(`${tzText}\n${registryText}`);
+  const warnShare = (warnFacts.length ? warnFound / warnFacts.length : 1) * (textMixups.warnAlarm.length ? 0.5 : 1);
 
   const reactionsInTz = reactions.filter((fact) => factInText(fact, tzText));
   const reactionShare = reactionsInTz.length / Math.max(1, reactions.length);
