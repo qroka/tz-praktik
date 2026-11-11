@@ -47,7 +47,8 @@ test.beforeEach(async ({ page }) => {
 
 test('1. Запуск: учебный режим, проверка имени, нет выбора сложности', async ({ page }) => {
   await page.goto('./');
-  await expect(page.getByRole('heading', { name: 'ТЗ Практикум' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'ТЗ Практикум' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('техническое задание');
   await expect(page.getByText('Узел горячей воды для моечной линии').first()).toBeVisible();
   await expect(page.getByText(/standard|strict|Строгий|Стандартный|seed/i)).toHaveCount(0);
   await expect(page.getByText('Ответы заказчика (тест)')).toHaveCount(0);
